@@ -375,7 +375,7 @@
                 :cols []}]}
 
     ;; Same as previous; all rows are considered
-    ;; equal when no compare-cols are provided.
+    ;; equal when no compare-cols are provided
     []
     {}
     [[{:foo 1 :bar 2}]
