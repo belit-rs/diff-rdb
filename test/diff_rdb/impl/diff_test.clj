@@ -374,8 +374,8 @@
                 :tgt  {:foo 1 :bar 2}
                 :cols []}]}
 
-    ;; Compare cols and ponders are required unless
-    ;; match-by doesn't produce some? in src and tgt
+    ;; Same as previous; all rows are considered
+    ;; equal when no compare-cols are provided.
     []
     {}
     [[{:foo 1 :bar 2}]
