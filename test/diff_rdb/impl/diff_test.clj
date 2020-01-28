@@ -66,121 +66,6 @@
        (impl/distinct-by nil nil [1 1]))))
 
 
-(deftest remove-eq-rows-test
-  (are [compare-cols src-tgt _ ret]
-      (->> (reverse src-tgt)
-           (impl/remove-eq-rows compare-cols) reverse
-           (= ret (impl/remove-eq-rows compare-cols src-tgt)))
-
-    ;; NONE TO NONE
-
-    [:foo] [nil nil] :=> [nil nil]
-    [:foo] [nil [] ] :=> [nil nil]
-    [:foo] [[]  [] ] :=> [nil nil]
-
-    ;; SEQ TO NONE
-
-    [:foo] [[{:foo 2}] nil]
-    :=>    [[{:foo 2}] nil]
-
-    [:foo] [[{:foo 2} {:foo 3}] nil]
-    :=>    [[{:foo 2} {:foo 3}] nil]
-
-    [:foo] [[{:foo 2}] []]
-    :=>    [[{:foo 2}] nil]
-
-    [:foo] [[{:foo 2} {:foo 3}] []]
-    :=>    [[{:foo 2} {:foo 3}] nil]
-
-    ;; ONE TO ONE
-
-    [:foo]
-    [[{:foo 2}]
-     [{:foo 2}]]
-    :=> [nil nil]
-
-    [:foo]
-    [[{:foo 2}]
-     [{:foo 3}]]
-    :=> [[{:foo 2}] [{:foo 3}]]
-
-    ;; ONE TO MANY
-
-    [:foo]
-    [[{:foo 2}]
-     [{:foo 2} {:foo 3}]]
-    :=> [nil [{:foo 3}]]
-
-    [:foo]
-    [[{:foo 1}]
-     [{:foo 2} {:foo 3}]]
-    :=> [[{:foo 1}]
-         [{:foo 2} {:foo 3}]]
-
-    ;; MANY TO MANY
-
-    ;; All eq rows
-    [:foo :bar]
-    [[{:id  1 :foo 1 :bar 1}
-      {:id  2 :foo 2 :bar 2}]
-     [{:id 11 :foo 1 :bar 1}
-      {:id 22 :foo 2 :bar 2}]]
-    :=> [nil nil]
-
-    ;; Some eq rows
-    [:foo :bar]
-    [[{:id  1 :foo 1 :bar 1}
-      {:id  2 :foo 2 :bar 2}
-      {:id  3 :foo 2 :bar 2}]
-     [{:id 11 :foo 1 :bar 1}
-      {:id 22 :foo 2 :bar 2}]]
-    :=> [[{:id 3 :foo 2 :bar 2}]
-         nil]
-
-    ;; Some eq rows
-    [:foo :bar]
-    [[{:id  1 :foo 1}
-      {:id  2 :foo 2 :bar 2}]
-     [{:id 11 :foo 1 :bar nil}
-      {:id 22 :foo 2}]]
-    :=> [[{:id  2 :foo 2 :bar 2}]
-         [{:id 22 :foo 2}]]
-
-    ;; No eq rows
-    [:foo :bar]
-    [[{:id  1 :foo 1 :bar 1}
-      {:id  2 :foo 2 :bar 2}
-      {:id  3 :foo 3 :bar 3}]
-     [{:id 11 :foo 4 :bar 4}
-      {:id 22 :foo 5 :bar 5}]]
-    :=> [[{:id  1 :foo 1 :bar 1}
-          {:id  2 :foo 2 :bar 2}
-          {:id  3 :foo 3 :bar 3}]
-         [{:id 11 :foo 4 :bar 4}
-          {:id 22 :foo 5 :bar 5}]]
-
-    ;; Duplicate rows
-    [:foo :bar]
-    [[{:id  1 :foo 1 :bar 1}
-      {:id  2 :foo 2 :bar 2}]
-     [{:id 11 :foo 1 :bar 1}
-      {:id 22 :foo 2 :bar 2}
-      {:id 22 :foo 2 :bar 2}]]
-    :=> [nil
-         [{:id 22 :foo 2 :bar 2}]]
-
-    ;; TRASH CASES
-
-    nil    nil                     :=> [nil nil]
-    nil    []                      :=> [nil nil]
-    []     []                      :=> [nil nil]
-    [:foo] nil                     :=> [nil nil]
-    nil    [[{:bar 2}] [{:bar 3}]] :=> [nil nil]
-    []     [[{:bar 2}] [{:bar 3}]] :=> [nil nil]
-    [:foo] [[{:bar 2}] [{:bar 3}]] :=> [nil nil]
-    [nil]  [[{:bar 2}] [{:bar 3}]] :=> [nil nil]))
-
-
 (deftest diff-cols-test
   (are [compare-cols m1 m2 _ ret]
       (= (impl/diff-cols compare-cols m1 m2)
@@ -228,6 +113,21 @@
                    :src :tgt, :tgt :src}) %))
            (= ret (impl/diff-rows compare-cols ponders src-tgt)))
 
+    ;; NONE TO NONE
+
+    nil nil nil :=> {}
+    []  nil nil :=> {}
+    nil {}  nil :=> {}
+    nil nil []  :=> {}
+    []  {}  nil :=> {}
+    nil {}  []  :=> {}
+    []  {}  []  :=> {}
+
+    [:foo] {:foo 5} [       ] :=> {}
+    [:foo] {:foo 5} [nil nil] :=> {}
+    [:foo] {:foo 5} [[]  [] ] :=> {}
+    [:foo] {:foo 5} [nil [] ] :=> {}
+
     ;; SEQ TO NONE
 
     [:foo]
@@ -268,6 +168,14 @@
                 :tgt  {:id 11 :foo 2 :bar 2 :baz 4}
                 :cols [:foo :baz]}]}
 
+    ;; All rows are considered eq when
+    ;; no compare-cols are provided
+    []
+    {}
+    [[{:foo 1 :bar 2}]
+     [{:foo 3 :bar 5}]]
+    :=> {}
+
     ;; ONE TO MANY
 
     [:foo :bar]
@@ -281,6 +189,26 @@
                 :cols [:foo]}]}
 
     ;; MANY TO MANY
+
+    ;; All eq rows
+    [:bar :baz]
+    {:bar 1 :baz 2}
+    [[{:id  1 :foo 1 :bar 1 :baz 1}
+      {:id  2 :foo 2 :bar 2 :baz 2}]
+     [{:id 11 :foo 1 :bar 1 :baz 1}
+      {:id 22 :foo 2 :bar 2 :baz 2}]]
+    :=> {}
+
+    ;; Some eq rows
+    [:bar :baz]
+    {:bar 1 :baz 2}
+    [[{:id  1 :foo 1 :bar 1 :baz 1}
+      {:id  2 :foo 2 :bar 2 :baz 2}]
+     [{:id 11 :foo 1 :bar 1 :baz 3}
+      {:id 22 :foo 2 :bar 2 :baz 2}]]
+    :=> {:upd [{:src  {:id  1 :foo 1 :bar 1 :baz 1}
+                :tgt  {:id 11 :foo 1 :bar 1 :baz 3}
+                :cols [:baz]}]}
 
     ;; Same count
     [:foo :bar :baz]
@@ -351,57 +279,15 @@
 
     ;; TRASH CASES
 
-    nil nil nil :=> {}
-    []  nil nil :=> {}
-    nil {}  nil :=> {}
-    nil nil []  :=> {}
-    []  {}  nil :=> {}
-    nil {}  []  :=> {}
-    []  {}  []  :=> {}
-
-    ;; Expects seq src or seq tgt
-    [:foo] {:foo 5} [       ] :=> {}
-    [:foo] {:foo 5} [nil nil] :=> {}
-    [:foo] {:foo 5} [[]  [] ] :=> {}
-    [:foo] {:foo 5} [nil [] ] :=> {}
-
-    ;; Expects no equal (by compare-cols) rows
-    [:foo]
-    {:foo 5}
-    [[{:foo 1 :bar 2}]
-     [{:foo 1 :bar 2}]]
-    :=> {:upd [{:src  {:foo 1 :bar 2}
-                :tgt  {:foo 1 :bar 2}
-                :cols []}]}
-
-    ;; Same as previous; all rows are considered
-    ;; equal when no compare-cols are provided
-    []
-    {}
-    [[{:foo 1 :bar 2}]
-     [{:foo 3 :bar 5}]]
-    :=> {:upd [{:src {:foo 1 :bar 2}
-                :tgt {:foo 3 :bar 5}
-                :cols []}]}
-
-    []
-    {}
-    [[{:foo 1 :bar 2}]
-     []]
-    :=> {:ins [{:foo 1 :bar 2}]}
-
     ;; Expects (= compare-cols (keys ponders))
+
     []
     {:foo 1 :bar 2}
     [[{:foo 1 :bar 2}
       {:foo 1 :bar 2}]
      [{:foo 3 :bar 5}]]
-    :=> {:ins [{:foo 1 :bar 2}]
-         :upd [{:src {:foo 1 :bar 2}
-                :tgt {:foo 3 :bar 5}
-                :cols []}]})
+    :=> {:ins [{:foo 1 :bar 2}]})
 
-  ;; Expects (= compare-cols (keys ponders))
   (is (thrown?
        NullPointerException
        (impl/diff-rows

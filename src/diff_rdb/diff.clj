@@ -38,9 +38,8 @@
                    (group-by match-fn src)
                    (group-by match-fn tgt))))
            (mapcat vals)
-           (map #(impl/remove-eq-rows compare-cols %))
-           (filter #(some some? %))
-           (map #(impl/diff-rows compare-cols ponders %)))))
+           (map #(impl/diff-rows compare-cols ponders %))
+           (filter seq))))
   ([config src tgt]
    (transduce (diff config)
               (partial merge-with into)
