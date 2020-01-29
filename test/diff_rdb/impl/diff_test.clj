@@ -66,42 +66,6 @@
        (impl/distinct-by nil nil [1 1]))))
 
 
-(deftest diff-cols-test
-  (are [compare-cols m1 m2 _ ret]
-      (= (impl/diff-cols compare-cols m1 m2)
-         (impl/diff-cols compare-cols m2 m1)
-         ret)
-
-    [:foo :bar :baz]
-    {:id 1 :foo "1" :bar 2 :baz 3}
-    {:id 2 :foo "3" :bar 2 :baz 1}
-    :=> [:foo :baz]
-
-    [:foo :bar]
-    {:foo :x :bar nil :baz 4}
-    {:foo :x :bar   3 :baz 3}
-    :=> [:bar]
-
-    [:foo :bar]
-    {:foo :x :baz 4}
-    {:foo :x :baz 3 :bar 3}
-    :=> [:bar]
-
-    [:foo :bar] {:foo 1 :bar 2} {:foo 1 :bar 2} :=> []
-    [:foo]      {:foo nil}      {:foo nil}      :=> []
-    [:foo]      {:foo nil}      {}              :=> []
-    [:foo]      {:foo nil}      nil             :=> []
-
-    nil    nil      nil      :=> []
-    [nil]  nil      nil      :=> []
-    [:foo] nil      nil      :=> []
-    [:foo] {}       {}       :=> []
-    [:foo] nil      {}       :=> []
-    [:foo] {}       nil      :=> []
-    nil    {:foo 5} {:foo 4} :=> []
-    []     {:foo 5} {:foo 4} :=> []))
-
-
 (deftest diff-rows-test
   (are [compare-cols ponders src-tgt _ ret]
       (->> (reverse src-tgt)

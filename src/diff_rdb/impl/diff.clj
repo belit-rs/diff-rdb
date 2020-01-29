@@ -31,13 +31,6 @@
       ret)))
 
 
-(defn diff-cols
-  "Returns a vector of those compare-cols which are keys
-  to different values in m1 and m2 maps."
-  [compare-cols m1 m2]
-  (filterv #(not= (get m1 %) (get m2 %)) compare-cols))
-
-
 (defn diff-rows
   "See the docstrings for `diff-rdb.diff/diff`."
   [compare-cols ponders [src tgt]]
@@ -45,7 +38,9 @@
         tgt (zipmap (range) tgt)
         upd (->> (for [[is ms] src
                        [it mt] tgt]
-                   [is it (diff-cols compare-cols ms mt)])
+                   [is it (remove #(= (get ms %)
+                                      (get mt %))
+                                  compare-cols)])
                  (sort-by #(->> (last %)
                                 (map ponders)
                                 (reduce +)))
@@ -56,7 +51,8 @@
                  (map (fn [[is it cols]]
                         {:src  (get src is)
                          :tgt  (get tgt it)
-                         :cols cols})) seq)]
+                         :cols (vec cols)}))
+                 seq)]
     (cond-> {}
       ins (assoc :ins (vec ins))
       del (assoc :del (vec del))
