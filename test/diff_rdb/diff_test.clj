@@ -286,4 +286,39 @@
   ;; Match-by is REQUIRED
   (is (thrown? ArityException (diff nil)))
   (is (thrown? ArityException (diff {})))
-  (is (thrown? ArityException (diff {:match-by []}))))
+  (is (thrown? ArityException (diff {:match-by []})))
+
+  ;; TRANSDUCER
+
+  (are [xf src-tgt _ ret]
+      (->> [ret (into [] xf src-tgt)]
+           (map sort-vectors)
+           (apply =))
+
+    (diff {:match-by [:foo]
+           :ponders  {:bar 1 :baz 2}})
+    [[[{:id  1 :foo 1 :bar 1 :baz 1}]
+      [{:id 11 :foo 1 :bar 1 :baz 1}]]]
+    :=> []
+
+    (diff {:match-by [:foo]
+           :ponders  {:bar 1 :baz 2}})
+    [[[{:id  1 :foo 1 :bar 1 :baz 1}
+       {:id  2 :foo 2 :bar 2 :baz 2}]
+      [{:id 11 :foo 1 :bar 1 :baz 3}
+       {:id 22 :foo 2 :bar 2 :baz 2}]]]
+    :=> [{:upd [{:src  {:id  1 :foo 1 :bar 1 :baz 1}
+                 :tgt  {:id 11 :foo 1 :bar 1 :baz 3}
+                 :cols [:baz]}]}]
+
+    (diff {:match-by [:foo :bar]
+           :ponders  {:baz 2}})
+    [[[{:id  1 :foo 1 :bar 1 :baz 1}
+       {:id  2 :foo 2 :bar 1 :baz 2}
+       {:id  3 :foo 2 :bar 4 :baz 2}]
+      [{:id 11 :foo 1 :bar 1 :baz 3}
+       {:id 22 :foo 2 :bar 4 :baz 2}]]]
+    :=> [{:ins [{:id 2 :foo 2 :bar 1 :baz 2}]}
+         {:upd [{:src  {:id  1 :foo 1 :bar 1 :baz 1}
+                 :tgt  {:id 11 :foo 1 :bar 1 :baz 3}
+                 :cols [:baz]}]}]))
