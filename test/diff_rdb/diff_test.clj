@@ -284,6 +284,6 @@
                 :cols [:baz]}]})
 
   ;; Match-by is REQUIRED
-  (is (thrown? ArityException (diff nil            nil nil)))
-  (is (thrown? ArityException (diff {}             nil nil)))
-  (is (thrown? ArityException (diff {:match-by []} nil nil))))
+  (is (thrown? ArityException (diff nil)))
+  (is (thrown? ArityException (diff {})))
+  (is (thrown? ArityException (diff {:match-by []}))))
