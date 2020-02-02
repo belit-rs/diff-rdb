@@ -37,12 +37,12 @@
                      (impl/pair-groups
                       (group-by match-fn src)
                       (group-by match-fn tgt))))
-           (map (fn [[src tgt]]
-                  (impl/diff-rows compare-cols
-                                  ponders
-                                  src tgt)))
-           (filter seq))))
+           (mapcat (fn [[src tgt]]
+                     (impl/diff-rows compare-cols
+                                     ponders
+                                     src tgt))))))
   ([config src tgt]
-   (transduce (diff config)
+   (transduce (comp (diff config)
+                    (map #(conj {} %)))
               (partial merge-with into)
               {} [[src tgt]])))
