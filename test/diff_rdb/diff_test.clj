@@ -306,9 +306,9 @@
        {:id  2 :foo 2 :bar 2 :baz 2}]
       [{:id 11 :foo 1 :bar 1 :baz 3}
        {:id 22 :foo 2 :bar 2 :baz 2}]]]
-    :=> [[:upd [{:src  {:id  1 :foo 1 :bar 1 :baz 1}
+    :=> [{:upd [{:src  {:id  1 :foo 1 :bar 1 :baz 1}
                  :tgt  {:id 11 :foo 1 :bar 1 :baz 3}
-                 :cols [:baz]}]]]
+                 :cols [:baz]}]}]
 
     (diff {:match-by [:foo :bar]
            :ponders  {:baz 2}})
@@ -317,10 +317,10 @@
        {:id  3 :foo 2 :bar 4 :baz 2}]
       [{:id 11 :foo 1 :bar 1 :baz 3}
        {:id 22 :foo 2 :bar 4 :baz 2}]]]
-    :=> [[:ins [{:id 2 :foo 2 :bar 1 :baz 2}]]
-         [:upd [{:src  {:id  1 :foo 1 :bar 1 :baz 1}
+    :=> [{:ins [{:id 2 :foo 2 :bar 1 :baz 2}]}
+         {:upd [{:src  {:id  1 :foo 1 :bar 1 :baz 1}
                  :tgt  {:id 11 :foo 1 :bar 1 :baz 3}
-                 :cols [:baz]}]]]
+                 :cols [:baz]}]}]
 
     (diff {:match-by [:foo :bar]
            :ponders  {:baz 2}})
@@ -331,11 +331,11 @@
        {:id 22 :foo 2 :bar 4 :baz 2}
        {:id 33 :foo 2 :bar 4 :baz 2}
        {:id 44 :foo 3 :bar 4 :baz 2}]]]
-    :=> [[:ins [{:id 2 :foo 1 :bar 1 :baz 2}
-                {:id 3 :foo 1 :bar 1 :baz 2}]]
-         [:upd [{:src  {:id  1 :foo 1 :bar 1 :baz 1}
+    :=> [{:ins [{:id 2 :foo 1 :bar 1 :baz 2}
+                {:id 3 :foo 1 :bar 1 :baz 2}]
+          :upd [{:src  {:id  1 :foo 1 :bar 1 :baz 1}
                  :tgt  {:id 11 :foo 1 :bar 1 :baz 3}
-                 :cols [:baz]}]]
-         [:del [{:id 22 :foo 2 :bar 4 :baz 2}
-                {:id 33 :foo 2 :bar 4 :baz 2}]]
-         [:del [{:id 44 :foo 3 :bar 4 :baz 2}]]]))
+                 :cols [:baz]}]}
+         {:del [{:id 22 :foo 2 :bar 4 :baz 2}
+                {:id 33 :foo 2 :bar 4 :baz 2}]}
+         {:del [{:id 44 :foo 3 :bar 4 :baz 2}]}]))
