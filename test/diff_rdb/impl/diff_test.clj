@@ -68,58 +68,56 @@
 
 
 (deftest diff-rows-test
-  (are [compare-cols ponders src-tgt _ ret]
-      (->> (reverse src-tgt)
-           (impl/diff-rows compare-cols ponders)
+  (are [compare-cols ponders src tgt _ ret]
+      (->> (impl/diff-rows compare-cols ponders tgt src)
            (clojure.walk/postwalk
             #(if (map? %)
                (clojure.set/rename-keys
                 % {:ins :del, :del :ins
                    :src :tgt, :tgt :src}) %))
-           (= ret (impl/diff-rows compare-cols ponders src-tgt)))
+           (= ret (impl/diff-rows compare-cols ponders src tgt)))
 
     ;; NONE TO NONE
 
-    nil nil nil :=> {}
-    []  nil nil :=> {}
-    nil {}  nil :=> {}
-    nil nil []  :=> {}
-    []  {}  nil :=> {}
-    nil {}  []  :=> {}
-    []  {}  []  :=> {}
+    nil nil nil nil :=> {}
+    []  nil nil nil :=> {}
+    nil {}  nil nil :=> {}
+    nil nil []  nil :=> {}
+    []  {}  nil nil :=> {}
+    nil {}  []  nil :=> {}
+    []  {}  []  []  :=> {}
 
-    [:foo] {:foo 5} [       ] :=> {}
-    [:foo] {:foo 5} [nil nil] :=> {}
-    [:foo] {:foo 5} [[]  [] ] :=> {}
-    [:foo] {:foo 5} [nil [] ] :=> {}
+    [:foo] {:foo 5} nil nil :=> {}
+    [:foo] {:foo 5} []  []  :=> {}
+    [:foo] {:foo 5} nil []  :=> {}
 
     ;; SEQ TO NONE
 
     [:foo]
     {:foo 5}
-    [[{:foo 1 :bar 2}]
-     nil]
+    [{:foo 1 :bar 2}]
+    nil
     :=> {:ins [{:foo 1 :bar 2}]}
 
     [:foo]
     {:foo 5}
-    [[{:foo 1 :bar 2}]
-     []]
+    [{:foo 1 :bar 2}]
+    []
     :=> {:ins [{:foo 1 :bar 2}]}
 
     [:foo]
     {:foo 5}
-    [[{:foo 1 :bar 2}
-      {:foo 2 :bar 3}]
-     nil]
+    [{:foo 1 :bar 2}
+     {:foo 2 :bar 3}]
+    nil
     :=> {:ins [{:foo 1 :bar 2}
                {:foo 2 :bar 3}]}
 
     [:foo]
     {:foo 5}
-    [[{:foo 1 :bar 2}
-      {:foo 2 :bar 3}]
-     []]
+    [{:foo 1 :bar 2}
+     {:foo 2 :bar 3}]
+    []
     :=> {:ins [{:foo 1 :bar 2}
                {:foo 2 :bar 3}]}
 
@@ -127,8 +125,8 @@
 
     [:foo :bar :baz]
     {:foo 1 :bar 2 :baz 3}
-    [[{:id  1 :foo 1 :bar 2 :baz 3}]
-     [{:id 11 :foo 2 :bar 2 :baz 4}]]
+    [{:id  1 :foo 1 :bar 2 :baz 3}]
+    [{:id 11 :foo 2 :bar 2 :baz 4}]
     :=> {:upd [{:src  {:id  1 :foo 1 :bar 2 :baz 3}
                 :tgt  {:id 11 :foo 2 :bar 2 :baz 4}
                 :cols [:foo :baz]}]}
@@ -137,17 +135,17 @@
     ;; no compare-cols are provided
     []
     {}
-    [[{:foo 1 :bar 2}]
-     [{:foo 3 :bar 5}]]
+    [{:foo 1 :bar 2}]
+    [{:foo 3 :bar 5}]
     :=> {}
 
     ;; ONE TO MANY
 
     [:foo :bar]
     {:foo 1 :bar 2}
-    [[{:id  1 :foo 1 :bar 2}]
-     [{:id 11 :foo 1 :bar 4}
-      {:id 22 :foo 2 :bar 2}]]
+    [{:id  1 :foo 1 :bar 2}]
+    [{:id 11 :foo 1 :bar 4}
+     {:id 22 :foo 2 :bar 2}]
     :=> {:del [{:id 11 :foo 1 :bar 4}]
          :upd [{:src  {:id  1 :foo 1 :bar 2}
                 :tgt  {:id 22 :foo 2 :bar 2}
@@ -158,19 +156,19 @@
     ;; All eq rows
     [:bar :baz]
     {:bar 1 :baz 2}
-    [[{:id  1 :foo 1 :bar 1 :baz 1}
-      {:id  2 :foo 2 :bar 2 :baz 2}]
-     [{:id 11 :foo 1 :bar 1 :baz 1}
-      {:id 22 :foo 2 :bar 2 :baz 2}]]
+    [{:id  1 :foo 1 :bar 1 :baz 1}
+     {:id  2 :foo 2 :bar 2 :baz 2}]
+    [{:id 11 :foo 1 :bar 1 :baz 1}
+     {:id 22 :foo 2 :bar 2 :baz 2}]
     :=> {}
 
     ;; Some eq rows
     [:bar :baz]
     {:bar 1 :baz 2}
-    [[{:id  1 :foo 1 :bar 1 :baz 1}
-      {:id  2 :foo 2 :bar 2 :baz 2}]
-     [{:id 11 :foo 1 :bar 1 :baz 3}
-      {:id 22 :foo 2 :bar 2 :baz 2}]]
+    [{:id  1 :foo 1 :bar 1 :baz 1}
+     {:id  2 :foo 2 :bar 2 :baz 2}]
+    [{:id 11 :foo 1 :bar 1 :baz 3}
+     {:id 22 :foo 2 :bar 2 :baz 2}]
     :=> {:upd [{:src  {:id  1 :foo 1 :bar 1 :baz 1}
                 :tgt  {:id 11 :foo 1 :bar 1 :baz 3}
                 :cols [:baz]}]}
@@ -178,10 +176,10 @@
     ;; Same count
     [:foo :bar :baz]
     {:foo 1 :bar 2 :baz 3}
-    [[{:id  1 :foo 1 :bar 2 :baz 4}
-      {:id  2 :foo 2 :bar 4 :baz 3}]
-     [{:id 11 :foo 3 :bar 2 :baz 3}
-      {:id 22 :foo 4 :bar 2 :baz 4}]]
+    [{:id  1 :foo 1 :bar 2 :baz 4}
+     {:id  2 :foo 2 :bar 4 :baz 3}]
+    [{:id 11 :foo 3 :bar 2 :baz 3}
+     {:id 22 :foo 4 :bar 2 :baz 4}]
     :=> {:upd [{:src  {:id  1 :foo 1 :bar 2 :baz 4}
                 :tgt  {:id 22 :foo 4 :bar 2 :baz 4}
                 :cols [:foo]}
@@ -192,12 +190,12 @@
     ;; Different count
     [:foo :bar :baz]
     {:foo 1 :bar 2 :baz 3}
-    [[{:id  1 :foo 1 :bar 2 :baz 4}
-      {:id  2 :foo 2 :bar 4 :baz 3}
-      {:id  3 :foo 3 :bar 6 :baz 7}
-      {:id  4 :foo 4 :bar 7 :baz 6}]
-     [{:id 11 :foo 5 :bar 2 :baz 3}
-      {:id 22 :foo 6 :bar 2 :baz 4}]]
+    [{:id  1 :foo 1 :bar 2 :baz 4}
+     {:id  2 :foo 2 :bar 4 :baz 3}
+     {:id  3 :foo 3 :bar 6 :baz 7}
+     {:id  4 :foo 4 :bar 7 :baz 6}]
+    [{:id 11 :foo 5 :bar 2 :baz 3}
+     {:id 22 :foo 6 :bar 2 :baz 4}]
     :=> {:ins [{:id 3 :foo 3 :bar 6 :baz 7}
                {:id 4 :foo 4 :bar 7 :baz 6}]
          :upd [{:src  {:id  1 :foo 1 :bar 2 :baz 4}
@@ -210,10 +208,10 @@
     ;; Same ponder sum
     [:foo :bar :baz]
     {:foo 1/2 :bar 1/2 :baz 1}
-    [[{:id  1 :foo 1 :bar 1 :baz 3}
-      {:id  2 :foo 2 :bar 2 :baz 3}]
-     [{:id 11 :foo 1 :bar 1 :baz 4}
-      {:id 22 :foo 3 :bar 3 :baz 3}]]
+    [{:id  1 :foo 1 :bar 1 :baz 3}
+     {:id  2 :foo 2 :bar 2 :baz 3}]
+    [{:id 11 :foo 1 :bar 1 :baz 4}
+     {:id 22 :foo 3 :bar 3 :baz 3}]
     :=> {:upd [{:src  {:id  1 :foo 1 :bar 1 :baz 3}
                 :tgt  {:id 11 :foo 1 :bar 1 :baz 4}
                 :cols [:baz]}
@@ -224,13 +222,13 @@
     ;; Duplicate rows
     [:foo :bar :baz]
     {:foo 0.5 :bar 0.5 :baz 1}
-    [[{:id  1 :foo 1 :bar 1 :baz 3}
-      {:id  2 :foo 2 :bar 2 :baz 3}
-      {:id  2 :foo 2 :bar 2 :baz 3}
-      {:id  2 :foo 2 :bar 2 :baz 3}]
-     [{:id 11 :foo 1 :bar 1 :baz 4}
-      {:id 22 :foo 3 :bar 3 :baz 3}
-      {:id 22 :foo 3 :bar 3 :baz 3}]]
+    [{:id  1 :foo 1 :bar 1 :baz 3}
+     {:id  2 :foo 2 :bar 2 :baz 3}
+     {:id  2 :foo 2 :bar 2 :baz 3}
+     {:id  2 :foo 2 :bar 2 :baz 3}]
+    [{:id 11 :foo 1 :bar 1 :baz 4}
+     {:id 22 :foo 3 :bar 3 :baz 3}
+     {:id 22 :foo 3 :bar 3 :baz 3}]
     :=> {:ins [{:id 2 :foo 2 :bar 2 :baz 3}]
          :upd [{:src  {:id  1 :foo 1 :bar 1 :baz 3}
                 :tgt  {:id 11 :foo 1 :bar 1 :baz 4}
@@ -248,9 +246,9 @@
 
     []
     {:foo 1 :bar 2}
-    [[{:foo 1 :bar 2}
-      {:foo 1 :bar 2}]
-     [{:foo 3 :bar 5}]]
+    [{:foo 1 :bar 2}
+     {:foo 1 :bar 2}]
+    [{:foo 3 :bar 5}]
     :=> {:ins [{:foo 1 :bar 2}]})
 
   (is (thrown?
@@ -258,14 +256,14 @@
        (impl/diff-rows
         [:foo :bar]
         {}
-        [[{:foo 1 :bar 2}
-          {:foo 1 :bar 2}]
-         [{:foo 3 :bar 5}]])))
+        [{:foo 1 :bar 2}
+         {:foo 1 :bar 2}]
+        [{:foo 3 :bar 5}])))
   (is (thrown?
        NullPointerException
        (impl/diff-rows
         [:foo :bar]
         {:foo 1}
-        [[{:foo 1 :bar 2}
-          {:foo 1 :bar 2}]
-         [{:foo 3 :bar 5}]]))))
+        [{:foo 1 :bar 2}
+         {:foo 1 :bar 2}]
+        [{:foo 3 :bar 5}]))))

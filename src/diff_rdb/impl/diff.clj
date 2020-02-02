@@ -33,7 +33,7 @@
 
 (defn diff-rows
   "See the docstrings for `diff-rdb.diff/diff`."
-  [compare-cols ponders [src tgt]]
+  [compare-cols ponders src tgt]
   (let [src (zipmap (range) src)
         tgt (zipmap (range) tgt)
         upd (->> (for [[is ms] src

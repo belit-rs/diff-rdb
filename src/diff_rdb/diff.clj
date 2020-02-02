@@ -37,7 +37,10 @@
                      (impl/pair-groups
                       (group-by match-fn src)
                       (group-by match-fn tgt))))
-           (map #(impl/diff-rows compare-cols ponders %))
+           (map (fn [[src tgt]]
+                  (impl/diff-rows compare-cols
+                                  ponders
+                                  src tgt)))
            (filter seq))))
   ([config src tgt]
    (transduce (diff config)
