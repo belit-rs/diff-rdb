@@ -33,11 +33,10 @@
    (let [{:keys [match-by ponders]} config
          match-fn (apply juxt match-by)
          compare-cols (keys ponders)]
-     (comp (map (fn [[src tgt]]
-                  (impl/pair-groups
-                   (group-by match-fn src)
-                   (group-by match-fn tgt))))
-           (mapcat vals)
+     (comp (mapcat (fn [[src tgt]]
+                     (impl/pair-groups
+                      (group-by match-fn src)
+                      (group-by match-fn tgt))))
            (map #(impl/diff-rows compare-cols ponders %))
            (filter seq))))
   ([config src tgt]

@@ -10,31 +10,32 @@
 (deftest pair-groups-test
   (are [g1 g2 _ ret]
       (->> (impl/pair-groups g2 g1)
-           (map (fn [[k v]] [k (reverse v)]))
-           (into {})
-           (= ret (impl/pair-groups g1 g2)))
+           (map reverse)
+           (vector ret (impl/pair-groups g1 g2))
+           (map #(sort-by hash %))
+           (apply =))
 
-    nil nil :=> {}
-    {}  nil :=> {}
-    {}  {}  :=> {}
+    nil nil :=> []
+    {}  nil :=> []
+    {}  {}  :=> []
 
-    {:foo nil} nil        :=> {:foo [nil nil]}
-    {:foo nil} {}         :=> {:foo [nil nil]}
-    {:foo nil} {:foo nil} :=> {:foo [nil nil]}
+    {:foo nil} nil        :=> [[nil nil]]
+    {:foo nil} {}         :=> [[nil nil]]
+    {:foo nil} {:foo nil} :=> [[nil nil]]
 
     {:foo 5}
     {:foo 6}
-    :=> {:foo [5 6]}
+    :=> [[5 6]]
 
     {:foo 5}
     {:bar 5}
-    :=> {:foo [5 nil]
-         :bar [nil 5]}
+    :=> [[5 nil]
+         [nil 5]]
 
     {:foo [1] :bar [2]}
     {:foo [3] :bar [4]}
-    :=> {:foo [[1] [3]]
-         :bar [[2] [4]]}))
+    :=> [[[1] [3]]
+         [[2] [4]]]))
 
 
 (deftest distinct-by-test

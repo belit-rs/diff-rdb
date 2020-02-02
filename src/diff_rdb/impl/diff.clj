@@ -5,15 +5,13 @@
 
 
 (defn pair-groups
-  "Pairs two group-by results using vector. Note:
-  (merge-with vector {:foo 5} {}) => {:foo 5}
-  (pair-groups       {:foo 5} {}) => {:foo [5 nil]}"
+  "Pairs values of two group-by results using vector."
   [g1 g2]
   (persistent!
    (reduce
     (fn [ret k]
-      (assoc! ret k [(get g1 k) (get g2 k)]))
-    (transient {})
+      (conj! ret [(get g1 k) (get g2 k)]))
+    (transient [])
     (set (into (keys g1) (keys g2))))))
 
 
