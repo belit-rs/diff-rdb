@@ -17,9 +17,14 @@ Diffs can be inspected with GUI, can be saved to disk in various data formats or
 Under development, **APIs may change**.
 
 #### TODO:
-- Core diff algorithm
+- ~Core diff algorithm~
 - JDBC, parallelization, IO
 - User interface
+
+## Documentation
+- [Installation](doc/installation.md)
+- GUI manual
+- [Using the APIs](doc/api.md)
 
 ## License
 Two options are available:
