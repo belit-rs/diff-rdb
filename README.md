@@ -1,5 +1,7 @@
 ## diff-rdb
 
+[![Clojars Project](https://img.shields.io/clojars/v/belit/diff-rdb.svg)](https://clojars.org/belit/diff-rdb)
+
 Tools and APIs for finding, inspecting and fixing differences between data sets in relational databases.
 
 Data sets may be gathered from different joins, schemas, databases or RDBMSs.
