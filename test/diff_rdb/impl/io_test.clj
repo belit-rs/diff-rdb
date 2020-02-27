@@ -106,8 +106,8 @@
   (testing "Parallelism"
     (let [n       (.availableProcessors
                    (Runtime/getRuntime))
-          coll    (set (range n))
-          ch-to   (async/chan n)
+          coll    (range n)
+          ch-to   (async/chan)
           ch-from (async/chan)]
       (impl/into-unordered n
                            ch-to
@@ -116,7 +116,7 @@
                            #(throw (AssertionError.)))
       (async/onto-chan ch-from coll)
       (dotimes [_ n]
-        (is (contains? coll (async/<!! ch-to))))
+        (is ((set coll) (async/<!! ch-to))))
       (is (drained? ch-to))))
   (testing "Error handling"
     (let [ch-to    (async/chan)
