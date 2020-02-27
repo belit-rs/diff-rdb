@@ -43,12 +43,8 @@
 
 (defn drained?
   [chan]
-  (nil? (async/<!! chan)))
-
-
-(defn closed?
-  [chan]
-  (not (async/>!! chan ::check)))
+  (and (nil? (async/<!! chan))
+       (not  (async/>!! chan ::check))))
 
 
 (deftest reducible-lines-test
@@ -75,7 +71,6 @@
         (is (= (async/<!! c) "BAR"))
         (is (= (async/<!! c) "BAZ"))
         (is (drained? c))
-        (is (closed?  c))
         (is (= (into [] (map str/upper-case) r)
                ["FOO" "BAR" "BAZ"])))))
   (testing "Database"
@@ -91,7 +86,6 @@
       (is (= (async/<!! c) {:column1 2}))
       (is (= (async/<!! c) {:column1 3}))
       (is (drained? c))
-      (is (closed?  c))
       (is (= (into [] (map #(into {} %)) r)
              [{:column1 1}
               {:column1 2}
@@ -104,7 +98,6 @@
                (impl/reducible-lines f)
                #(swap! a conj %))]
         (is (drained? c))
-        (is (closed?  c))
         (is (= (map #(:cause %) @a)
                ["Divide by zero"]))))))
 
@@ -124,8 +117,7 @@
       (async/onto-chan ch-from coll)
       (dotimes [_ n]
         (is (contains? coll (async/<!! ch-to))))
-      (is (drained? ch-to))
-      (is (closed?  ch-to))))
+      (is (drained? ch-to))))
   (testing "Error handling"
     (let [ch-to    (async/chan)
           ch-from  (async/chan)
@@ -139,5 +131,4 @@
       (is (= (:capture (async/<!! ch-error)) 5))
       (async/close! ch-from)
       (is (drained? ch-to))
-      (is (closed?  ch-to))
       (async/close! ch-error))))
