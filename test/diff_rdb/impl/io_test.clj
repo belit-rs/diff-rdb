@@ -41,6 +41,11 @@
    :password "test"})
 
 
+(defn drained?
+  [chan]
+  (nil? (async/<!! chan)))
+
+
 (defn closed?
   [chan]
   (not (async/>!! chan ::check)))
@@ -69,8 +74,8 @@
         (is (= (async/<!! c) "FOO"))
         (is (= (async/<!! c) "BAR"))
         (is (= (async/<!! c) "BAZ"))
-        (is (nil? (async/<!! c)))
-        (is (closed? c))
+        (is (drained? c))
+        (is (closed?  c))
         (is (= (into [] (map str/upper-case) r)
                ["FOO" "BAR" "BAZ"])))))
   (testing "Database"
@@ -85,8 +90,8 @@
       (is (= (async/<!! c) {:column1 1}))
       (is (= (async/<!! c) {:column1 2}))
       (is (= (async/<!! c) {:column1 3}))
-      (is (nil? (async/<!! c)))
-      (is (closed? c))
+      (is (drained? c))
+      (is (closed?  c))
       (is (= (into [] (map #(into {} %)) r)
              [{:column1 1}
               {:column1 2}
@@ -98,8 +103,8 @@
                (map #(/ (count %) 0))
                (impl/reducible-lines f)
                #(swap! a conj %))]
-        (is (nil? (async/<!! c)))
-        (is (closed? c))
+        (is (drained? c))
+        (is (closed?  c))
         (is (= (map #(:cause %) @a)
                ["Divide by zero"]))))))
 
@@ -119,8 +124,8 @@
       (async/onto-chan ch-from coll)
       (dotimes [_ n]
         (is (contains? coll (async/<!! ch-to))))
-      (is (nil? (async/<!! ch-to)))
-      (is (closed? ch-to))))
+      (is (drained? ch-to))
+      (is (closed?  ch-to))))
   (testing "Error handling"
     (let [ch-to    (async/chan)
           ch-from  (async/chan)
@@ -133,6 +138,6 @@
       (async/>!! ch-from 5)
       (is (= (:capture (async/<!! ch-error)) 5))
       (async/close! ch-from)
-      (is (nil? (async/<!! ch-to)))
-      (is (closed? ch-to))
+      (is (drained? ch-to))
+      (is (closed?  ch-to))
       (async/close! ch-error))))
