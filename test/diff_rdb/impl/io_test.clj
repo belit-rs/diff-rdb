@@ -92,13 +92,14 @@
               {:column1 3}]))))
   (testing "Exception"
     (with-file [f (create-file)]
-      (let [a (atom [])
+      (let [e (atom [])
             c (impl/reducible->chan
                (map #(/ (count %) 0))
                (impl/reducible-lines f)
-               #(swap! a conj %))]
+               #(->> (Throwable->map %)
+                     (swap! e conj)))]
         (is (drained? c))
-        (is (= (map #(:cause %) @a)
+        (is (= (map #(:cause %) @e)
                ["Divide by zero"]))))))
 
 
@@ -118,17 +119,18 @@
       (dotimes [_ n]
         (is ((set coll) (async/<!! ch-to))))
       (is (drained? ch-to))))
-  (testing "Error handling"
-    (let [ch-to    (async/chan)
-          ch-from  (async/chan)
-          ch-error (async/chan)]
+  (testing "Exception"
+    (let [ch-to   (async/chan)
+          ch-from (async/chan)
+          e       (atom [])]
       (impl/into-unordered 1
                            ch-to
                            #(/ % 0)
                            ch-from
-                           #(async/put! ch-error %))
+                           #(->> (Throwable->map %)
+                                 (swap! e conj)))
       (async/>!! ch-from 5)
-      (is (= (:capture (async/<!! ch-error)) 5))
       (async/close! ch-from)
       (is (drained? ch-to))
-      (async/close! ch-error))))
+      (is (= (map #(:cause %) @e)
+             ["Divide by zero"])))))

@@ -31,9 +31,10 @@
   "Creates and returns a channel with the contents of
   reducible, transformed using the xform transducer.
   Channel closes when reducible is fully reduced or if
-  exception is thrown. Exmap-handler is a function that
-  handles a mapified Throwable."
-  [xform reducible exmap-handler]
+  exception is thrown. Ex-handler is a function of one
+  argument - if an exception occurs it will be called
+  with the Throwable as an argument."
+  [xform reducible ex-handler]
   (let [chan (async/chan)]
     (async/thread
       (try
@@ -44,8 +45,7 @@
            ([_]   (async/close! chan)))
          nil reducible)
         (catch Throwable ex
-          (-> (Throwable->map ex)
-              exmap-handler))
+          (ex-handler ex))
         (finally
           (async/close! chan))))
     chan))
@@ -55,11 +55,11 @@
   "Takes elements from the from channel, applies the f
   function to each element and supplies them to the to
   channel, with parallelism n. The to channel will be
-  closed when the from channel closes. Exmap-handler
-  is a function that handles a mapified Throwable with
-  the [:capture value-taken-from-channel] entry conj'd.
+  closed when the from channel closes. Ex-handler is a
+  function of one argument - if an exception occurs it
+  will be called with the Throwable as an argument.
   Blocking operations are used, n threads are spawned."
-  [n to f from exmap-handler]
+  [n to f from ex-handler]
   (let [remain (atom n)]
     (dotimes [_ n]
       (async/thread
@@ -68,9 +68,7 @@
             (do (try
                   (async/>!! to (f v))
                   (catch Throwable ex
-                    (-> (Throwable->map ex)
-                        (assoc :capture v)
-                        exmap-handler)))
+                    (ex-handler ex)))
                 (recur))
             (when (zero? (swap! remain dec))
               (async/close! to))))))))
