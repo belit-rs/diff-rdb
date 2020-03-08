@@ -11,4 +11,6 @@
   :profiles {:dev
              {:dependencies [[org.postgresql/postgresql "42.2.10"]]
               :jvm-opts ["-Dclojure.core.async.go-checking=true"]
-              :global-vars {*warn-on-reflection* true}}})
+              :global-vars {*warn-on-reflection* true}
+              :injections [(require 'next.jdbc.specs)
+                           (next.jdbc.specs/instrument)]}})
