@@ -6,7 +6,7 @@
    [clojure.java.io :as io]
    [clojure.core.async :as async])
   (:import
-   (java.io File BufferedReader)
+   (java.io BufferedReader)
    (clojure.lang IReduceInit)))
 
 
