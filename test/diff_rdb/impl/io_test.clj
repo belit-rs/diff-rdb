@@ -101,36 +101,3 @@
         (is (drained? c))
         (is (= (map #(:cause %) @e)
                ["Divide by zero"]))))))
-
-
-(deftest into-unordered-test
-  (testing "Parallelism"
-    (let [n       (.availableProcessors
-                   (Runtime/getRuntime))
-          coll    (range n)
-          ch-to   (async/chan)
-          ch-from (async/chan)]
-      (impl/into-unordered n
-                           ch-to
-                           #(do (Thread/sleep 25) %)
-                           ch-from
-                           #(throw (AssertionError.)))
-      (async/onto-chan ch-from coll)
-      (dotimes [_ n]
-        (is ((set coll) (async/<!! ch-to))))
-      (is (drained? ch-to))))
-  (testing "Exception"
-    (let [ch-to   (async/chan)
-          ch-from (async/chan)
-          e       (atom [])]
-      (impl/into-unordered 1
-                           ch-to
-                           #(/ % 0)
-                           ch-from
-                           #(->> (Throwable->map %)
-                                 (swap! e conj)))
-      (async/>!! ch-from 5)
-      (async/close! ch-from)
-      (is (drained? ch-to))
-      (is (= (map #(:cause %) @e)
-             ["Divide by zero"])))))

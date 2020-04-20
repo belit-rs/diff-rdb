@@ -49,26 +49,3 @@
         (finally
           (async/close! chan))))
     chan))
-
-
-(defn into-unordered
-  "Takes elements from the from channel, applies the f
-  function to each element and supplies them to the to
-  channel, with parallelism n. The to channel will be
-  closed when the from channel closes. Ex-handler is a
-  function of one argument - if an exception occurs it
-  will be called with the Throwable as an argument.
-  Blocking operations are used, n threads are spawned."
-  [n to f from ex-handler]
-  (let [remain (atom n)]
-    (dotimes [_ n]
-      (async/thread
-        (loop []
-          (if-some [v (async/<!! from)]
-            (do (try
-                  (async/>!! to (f v))
-                  (catch Throwable ex
-                    (ex-handler ex)))
-                (recur))
-            (when (zero? (swap! remain dec))
-              (async/close! to))))))))
