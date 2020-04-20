@@ -53,7 +53,8 @@
 
 (defn sink-chan
   "Returns a channel that closes after n puts.
-  On-close is a zero arity function."
+  On-close is a zero arity function.
+  This channel should be write-only."
   [n on-close]
   (let [chan (async/chan)]
     (async/go-loop [n n]
