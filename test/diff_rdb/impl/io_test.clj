@@ -8,7 +8,9 @@
    [clojure.java.io :as io]
    [clojure.core.async :as async]
    [next.jdbc :as jdbc]
-   [diff-rdb.impl.io :as impl]))
+   [diff-rdb.impl.io :as impl])
+  (:import
+   (java.io IOException)))
 
 
 (defmacro with-file
@@ -101,4 +103,25 @@
         (is (drained? c))
         (await e)
         (is (= (map #(:cause %) @e)
-               ["Divide by zero"]))))))
+               ["Divide by zero"])))))
+  (testing "Resource management"
+    (let [f (create-file)
+          r (impl/reducible-lines f)]
+      (is (io/delete-file f)))
+    (let [f (create-file)
+          r (impl/reducible-lines f)
+          c (impl/reducible->chan
+             (map str/upper-case)
+             r (fn [_]))]
+      (is (= (async/<!! c) "FOO"))
+      (is (thrown?
+           IOException
+           (io/delete-file f)))
+      (async/close! c)
+      (is (thrown?
+           IOException
+           (io/delete-file f)))
+      (is (= (async/<!! c) "BAR"))
+      (is (drained? c))
+      (Thread/sleep 50)
+      (is (io/delete-file f)))))
