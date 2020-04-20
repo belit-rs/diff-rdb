@@ -92,12 +92,13 @@
               {:column1 3}]))))
   (testing "Exception"
     (with-file [f (create-file)]
-      (let [e (atom [])
+      (let [e (agent [])
             c (impl/reducible->chan
                (map #(/ (count %) 0))
                (impl/reducible-lines f)
                #(->> (Throwable->map %)
-                     (swap! e conj)))]
+                     (send e conj)))]
         (is (drained? c))
+        (await e)
         (is (= (map #(:cause %) @e)
                ["Divide by zero"]))))))
