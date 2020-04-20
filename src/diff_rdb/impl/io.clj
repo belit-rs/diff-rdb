@@ -49,3 +49,20 @@
         (finally
           (async/close! chan))))
     chan))
+
+
+(defn sink-chan
+  "Returns a channel that closes after n puts.
+  On-close is a zero arity function."
+  [n on-close]
+  (let [chan (async/chan)]
+    (async/go-loop [n n]
+      (if (pos? n)
+        (if-some [_ (async/<! chan)]
+          (recur (dec n))
+          (on-close))
+        (do (async/close! chan)
+            ;; unblock pending
+            (async/poll! chan)
+            (on-close))))
+    chan))
