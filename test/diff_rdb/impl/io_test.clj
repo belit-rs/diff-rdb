@@ -128,21 +128,27 @@
 
 
 (deftest sink-chan-test
-  (is (drained? (impl/sink-chan -1 #())))
-  (is (drained? (impl/sink-chan  0 #())))
+  (let [p (promise)
+        c (impl/sink-chan -1 #(deliver p true))]
+    (is (drained? c))
+    (is (deref p 50 false)))
+  (let [p (promise)
+        c (impl/sink-chan 0 #(deliver p true))]
+    (is (drained? c))
+    (is (deref p 50 false)))
   (let [p (promise)
         c (impl/sink-chan 1 #(deliver p true))]
     (is (async/>!! c 1))
-    (is @p)
+    (is (deref p 50 false))
     (is (drained? c)))
   (let [p (promise)
         c (impl/sink-chan 2 #(deliver p true))]
     (is (async/>!! c false))
     (is (async/>!! c 2))
-    (is @p)
+    (is (deref p 50 false))
     (is (drained? c)))
   (let [p (promise)
         c (impl/sink-chan 2 #(deliver p true))]
     (async/close! c)
-    (is @p)
+    (is (deref p 50 false))
     (is (drained? c))))
