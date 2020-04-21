@@ -94,16 +94,15 @@
               {:column1 3}]))))
   (testing "Exception"
     (with-file [f (create-file)]
-      (let [e (agent [])
+      (let [e (promise)
             c (impl/reducible->chan
                (map #(/ (count %) 0))
                (impl/reducible-lines f)
                #(->> (Throwable->map %)
-                     (send e conj)))]
+                     :cause (deliver e)))]
         (is (drained? c))
-        (await e)
-        (is (= (map #(:cause %) @e)
-               ["Divide by zero"])))))
+        (is (= (deref e 500 false)
+               "Divide by zero")))))
   (testing "Resource management"
     (let [f (create-file)
           r (impl/reducible-lines f)]
