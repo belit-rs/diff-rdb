@@ -67,3 +67,29 @@
             (async/poll! chan)
             (on-close))))
     chan))
+
+
+(defn run-in-pool
+  "Runs a zero arity function f in parallel, on n threads.
+  If f throws, ex-handler will be called with the Throwable
+  as an argument and f will be re-run. After all n fs have
+  gracefully finished, the pool will be closed and a zero
+  arity function on-close will be called."
+  [n f ex-handler on-close]
+  (assert (pos? n))
+  (let [ch-pool (async/chan)
+        xf      (map (fn [wkr] (f) wkr))
+        ch-sink (sink-chan
+                 n
+                 (fn pool-on-close []
+                   (async/close! ch-pool)
+                   (on-close)))
+        wkrs    (repeat n ::wkr)]
+    (async/pipeline-blocking
+     n ch-sink xf ch-pool true
+     (fn pool-ex-handler [ex]
+       (ex-handler ex)
+       ;; avoid >!! deadlock
+       (async/put! ch-pool ::wkr)
+       nil))
+    (async/onto-chan ch-pool wkrs false)))
