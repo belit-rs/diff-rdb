@@ -45,9 +45,8 @@
            ([_]   (async/close! chan)))
          nil reducible)
         (catch Throwable ex
-          (ex-handler ex))
-        (finally
-          (async/close! chan))))
+          (async/close! chan)
+          (ex-handler ex))))
     chan))
 
 
