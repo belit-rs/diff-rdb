@@ -77,7 +77,7 @@
   [n f ex-handler on-close]
   (assert (pos? n))
   (let [ch-pool (async/chan)
-        xf      (map (fn [wkr] (f) wkr))
+        xf      (map (fn pool-f [wkr] (f) wkr))
         ch-sink (sink-chan
                  n
                  (fn pool-on-close []
