@@ -10,7 +10,8 @@
    [next.jdbc :as jdbc]
    [diff-rdb.impl.io :as impl])
   (:import
-   (java.io IOException)))
+   (java.io IOException)
+   (java.lang ArithmeticException)))
 
 
 (defmacro with-file
@@ -47,6 +48,15 @@
   [chan]
   (and (nil? (async/<!! chan))
        (not  (async/>!! chan ::check))))
+
+
+(deftest <??-test
+  (is (thrown?
+       ArithmeticException
+       (impl/<?? (async/thread
+                   (try (/ 2 0)
+                        (catch Throwable e e))))))
+  (is (zero? (impl/<?? (async/thread 0)))))
 
 
 (deftest reducible-lines-test
@@ -182,8 +192,8 @@
                               (recur)))
                           (fn ex-handler [ex]
                             (->> ^Throwable ex
-                                 (.getClass)
-                                 (.getSimpleName)
+                                 .getClass
+                                 .getSimpleName
                                  (async/>!! ch-err)))
                           (fn on-close []
                             (async/close! ch-out)

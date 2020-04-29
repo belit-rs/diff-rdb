@@ -10,6 +10,16 @@
    (clojure.lang IReduceInit)))
 
 
+(defn <??
+  "Variation of the `clojure.core.async/<!!` that throws
+  an exception if val taken from the chan is Throwable."
+  [chan]
+  (let [v (async/<!! chan)]
+    (if (instance? Throwable v)
+      (throw v)
+      v)))
+
+
 (defn reducible-lines
   "Returns a reducible that, when reduced, opens a reader
   and yields file's lines. Reader is closed when reduced?
@@ -71,9 +81,9 @@
 (defn run-in-pool
   "Runs a zero arity function f in parallel, on n threads.
   If f throws, ex-handler will be called with the Throwable
-  as an argument and f will be re-run. After all n fs have
-  gracefully finished, the pool will be closed and a zero
-  arity function on-close will be called."
+  as an argument and f will be re-executed. After all n fs
+  have gracefully finished, the pool will be closed and a
+  zero arity function on-close will be called."
   [n f ex-handler on-close]
   (assert (pos? n))
   (let [ch-pool (async/chan)
