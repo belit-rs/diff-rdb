@@ -23,6 +23,6 @@
   "Replaces '?s' in a query with n times repeated '?',
   separated by the comma separator."
   [n query]
-  (->> (repeat (or n 0) \?)
+  (->> (repeat n \?)
        (str/join \,)
        (str/replace query "?s")))

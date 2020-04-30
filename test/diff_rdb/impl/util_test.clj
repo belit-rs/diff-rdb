@@ -29,9 +29,10 @@
 (deftest expand-?s-test
   (is (= (impl/expand-?s 3 "IN(?s)")
          "IN(?,?,?)"))
-  (is (= (impl/expand-?s nil "IN(?s)")
-         "IN()"))
   (testing "Trash cases"
+    (is (thrown?
+         NullPointerException
+         (impl/expand-?s nil "IN(?s)")))
     (is (= (impl/expand-?s -3 "IN(?s)")
            (impl/expand-?s  0 "IN(?s)")
            (impl/expand-?s  3 "IN()")
