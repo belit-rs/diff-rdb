@@ -118,9 +118,10 @@
 
 
 (defn async-select
-  "Returns a future object that sets the ptn elements as
-  parameters to the pst PreparedStatement and executes
-  it in another thread. Use deref/@ to get the result."
+  "Executes the pst PreparedStatement with the ptn parameters
+  in another thread. Returns a channel which will receive the
+  result of the execution when completed, then close.
+  Exception, if thrown, is placed on the returned channel."
   [pst ptn opts]
   (-> (prep/set-parameters pst ptn)
       (jdbc/execute! nil opts)
