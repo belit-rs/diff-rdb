@@ -108,15 +108,6 @@
     (async/onto-chan ch-pool wkrs false)))
 
 
-(def default-opts
-  {:con {:read-only   true
-         :auto-commit false}
-   :pst {:cursors     :close
-         :concurrency :read-only
-         :result-type :forward-only}
-   :exe {:builder-fn  rs/as-unqualified-lower-maps}})
-
-
 (defn async-select
   "Executes the pst PreparedStatement with the ptn parameters
   in another thread. Returns a channel which will receive the
@@ -135,28 +126,28 @@
   for each partition taken from the ch-ptn channel, pairs the
   results using vector and puts pairs to the ch-out channel.
   Function loops until either ch-ptn or ch-out is closed or if
-  exception is thrown (failed ptn is captured in the ex-data).
-  Default opts for Connection, PreparedStatement and ResultSet
-  are taken from the `diff-rdb.impl.io/default-opts` var."
+  exception is thrown (failed ptn is captured in the ex-data)."
   [config ch-ptn ch-out]
-  (let [conn-src (:src/conn config)
-        conn-tgt (:tgt/conn config)
-        ptn-size (:ptn/size config)
-        qry-src  [(util/expand-?s ptn-size (:src/query config))]
-        qry-tgt  [(util/expand-?s ptn-size (:tgt/query config))]
-        conopts  (merge (:con default-opts) (:con/opts config))
-        pstopts  (merge (:pst default-opts) (:pst/opts config))
-        exeopts  (merge (:exe default-opts) (:exe/opts config))]
+  (let [con-src      (:src/con config)
+        con-tgt      (:tgt/con config)
+        qry-src      [(:src/query config)]
+        qry-tgt      [(:tgt/query config)]
+        con-opts-src (:src/con-opts config {})
+        con-opts-tgt (:tgt/con-opts config {})
+        pst-opts-src (:src/pst-opts config {})
+        pst-opts-tgt (:tgt/pst-opts config {})
+        exe-opts-src (:src/exe-opts config {})
+        exe-opts-tgt (:tgt/exe-opts config {})]
     (fn parallel-select []
-      (with-open [con-src (jdbc/get-connection conn-src conopts)
-                  con-tgt (jdbc/get-connection conn-tgt conopts)
-                  pst-src (jdbc/prepare con-src qry-src pstopts)
-                  pst-tgt (jdbc/prepare con-tgt qry-tgt pstopts)]
+      (with-open [con-src (jdbc/get-connection con-src con-opts-src)
+                  con-tgt (jdbc/get-connection con-tgt con-opts-tgt)
+                  pst-src (jdbc/prepare con-src qry-src pst-opts-src)
+                  pst-tgt (jdbc/prepare con-tgt qry-tgt pst-opts-tgt)]
         (loop []
           (when-some [ptn (async/<!! ch-ptn)]
             (when (try
-                    (let [src (async-select pst-src ptn exeopts)
-                          tgt (async-select pst-tgt ptn exeopts)
+                    (let [src (async-select pst-src ptn exe-opts-src)
+                          tgt (async-select pst-tgt ptn exe-opts-tgt)
                           src (<?? src)
                           tgt (<?? tgt)]
                       (async/>!! ch-out [src tgt]))
