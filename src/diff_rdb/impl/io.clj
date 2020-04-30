@@ -4,7 +4,11 @@
 (ns diff-rdb.impl.io
   (:require
    [clojure.java.io :as io]
-   [clojure.core.async :as async])
+   [clojure.core.async :as async]
+   [next.jdbc :as jdbc]
+   [next.jdbc.prepare :as prep]
+   [next.jdbc.result-set :as rs]
+   [diff-rdb.impl.util :as util])
   (:import
    (java.io BufferedReader)
    (clojure.lang IReduceInit)))
@@ -102,3 +106,63 @@
        (async/put! ch-pool ::wkr)
        nil))
     (async/onto-chan ch-pool wkrs false)))
+
+
+(def default-opts
+  {:con {:read-only   true
+         :auto-commit false}
+   :pst {:cursors     :close
+         :concurrency :read-only
+         :result-type :forward-only}
+   :exe {:builder-fn  rs/as-unqualified-lower-maps}})
+
+
+(defn async-select
+  "Returns a future object that sets the ptn elements as
+  parameters to the pst PreparedStatement and executes
+  it in another thread. Use deref/@ to get the result."
+  [pst ptn opts]
+  (-> (prep/set-parameters pst ptn)
+      (jdbc/execute! nil opts)
+      (try (catch Throwable ex ex))
+      async/thread))
+
+
+(defn parallel-select-fn
+  "Returns a zero arity function that opens src and tgt dbase
+  connections, executes src and tgt select queries in parallel
+  for each partition taken from the ch-ptn channel, pairs the
+  results using vector and puts pairs to the ch-out channel.
+  Function loops until either ch-ptn or ch-out is closed or if
+  exception is thrown (failed ptn is captured in the ex-data).
+  Default opts for Connection, PreparedStatement and ResultSet
+  are taken from the `diff-rdb.impl.io/default-opts` var."
+  [config ch-ptn ch-out]
+  (let [conn-src (:src/conn config)
+        conn-tgt (:tgt/conn config)
+        ptn-size (:ptn/size config)
+        qry-src  [(util/expand-?s ptn-size (:src/query config))]
+        qry-tgt  [(util/expand-?s ptn-size (:tgt/query config))]
+        conopts  (merge (:con default-opts) (:con/opts config))
+        pstopts  (merge (:pst default-opts) (:pst/opts config))
+        exeopts  (merge (:exe default-opts) (:exe/opts config))]
+    (fn parallel-select []
+      (with-open [con-src (jdbc/get-connection conn-src conopts)
+                  con-tgt (jdbc/get-connection conn-tgt conopts)
+                  pst-src (jdbc/prepare con-src qry-src pstopts)
+                  pst-tgt (jdbc/prepare con-tgt qry-tgt pstopts)]
+        (loop []
+          (when-some [ptn (async/<!! ch-ptn)]
+            (when (try
+                    (let [src (async-select pst-src ptn exeopts)
+                          tgt (async-select pst-tgt ptn exeopts)
+                          src (<?? src)
+                          tgt (<?? tgt)]
+                      (async/>!! ch-out [src tgt]))
+                    (catch Throwable ex
+                      (->> {:err :parallel-select
+                            :ptn ptn
+                            :ex  (Throwable->map ex)}
+                           (ex-info "parallel-select failed")
+                           throw)))
+              (recur))))))))

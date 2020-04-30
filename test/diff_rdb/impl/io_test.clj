@@ -8,10 +8,13 @@
    [clojure.java.io :as io]
    [clojure.core.async :as async]
    [next.jdbc :as jdbc]
+   [next.jdbc.result-set :as rs]
    [diff-rdb.impl.io :as impl])
   (:import
    (java.io IOException)
-   (java.lang ArithmeticException)))
+   (java.lang ArithmeticException)
+   (clojure.lang ExceptionInfo)
+   (org.postgresql.util PSQLException)))
 
 
 (defmacro with-file
@@ -228,3 +231,136 @@
      :in  (conj (repeat 9000 0) 5 6)
      :out #{1/5 1/6}
      :err #{"ArithmeticException"}}))
+
+
+(deftest async-select-test
+  (let [sql-params ["SELECT column1
+                       FROM (VALUES (1, 1, 1),
+                                    (2, 2, 2),
+                                    (3, 3, 3)) AS _
+                      WHERE column3 IN (?, ?)"]]
+    (with-open [con (jdbc/get-connection (db-spec))
+                pst (jdbc/prepare con sql-params)]
+      (is (= (async/<!! (impl/async-select pst [1 3] {}))
+             [{:column1 1} {:column1 3}]))
+      (is (= (async/<!! (impl/async-select pst [2 1] {}))
+             [{:column1 1} {:column1 2}]))
+      (is (thrown?
+           PSQLException
+           (impl/<?? (impl/async-select pst [1 2 3] {}))))))
+  (let [sql-params ["SELECT * FROM (VALUES (1, 2)) AS _"]]
+    (with-open [con (jdbc/get-connection (db-spec))
+                pst (jdbc/prepare con sql-params)]
+      (is (= (async/<!! (impl/async-select pst [] {}))
+             [{:column1 1 :column2 2}])))))
+
+
+(deftest parallel-select-fn-test
+  (testing "Without partitions"
+    (let [ch-ptn (async/to-chan [[]])
+          ch-out (async/chan)
+          select (future
+                   ((impl/parallel-select-fn
+                     {:src/conn  (db-spec)
+                      :tgt/conn  (db-spec)
+                      :src/query "SELECT * FROM (VALUES (1)) AS _"
+                      :tgt/query "SELECT * FROM (VALUES (2)) AS _"}
+                     ch-ptn ch-out)))]
+      (is (= (async/<!! ch-out) [[{:column1 1}] [{:column1 2}]]))
+      (is (nil? @select))
+      (async/close! ch-out)))
+  (testing "With partitions"
+    (let [ch-ptn (async/to-chan [[1] [2] [3]])
+          ch-out (async/chan)
+          select (future
+                   ((impl/parallel-select-fn
+                     {:src/conn  (db-spec)
+                      :tgt/conn  (db-spec)
+                      :src/query "SELECT column3
+                                    FROM (VALUES (1, 2, 3),
+                                                 (2, 3, 4),
+                                                 (3, 4, 5)) AS _
+                                   WHERE column1 = ?"
+                      :tgt/query "SELECT column3
+                                    FROM (VALUES (1, 2, 3),
+                                                 (2, 3, 4),
+                                                 (3, 4, 5)) AS _
+                                   WHERE column1 = ?"}
+                     ch-ptn ch-out)))]
+      (is (= (async/<!! ch-out) [[{:column3 3}] [{:column3 3}]]))
+      (is (= (async/<!! ch-out) [[{:column3 4}] [{:column3 4}]]))
+      (is (= (async/<!! ch-out) [[{:column3 5}] [{:column3 5}]]))
+      (is (nil? @select))
+      (async/close! ch-out)))
+  (testing "Change options"
+    (let [ch-ptn (async/to-chan [[1] [2] [3]])
+          ch-out (async/chan)
+          select (future
+                   ((impl/parallel-select-fn
+                     {:src/conn  (db-spec)
+                      :tgt/conn  (db-spec)
+                      :src/query "SELECT column3
+                                    FROM (VALUES (1, 2, 3),
+                                                 (2, 3, 4),
+                                                 (3, 4, 5)) AS _
+                                   WHERE column1 = ?"
+                      :tgt/query "SELECT column3
+                                    FROM (VALUES (1, 2, 3),
+                                                 (2, 3, 4),
+                                                 (3, 4, 5)) AS _
+                                   WHERE column1 = ?"
+                      :exe/opts {:builder-fn rs/as-arrays}}
+                     ch-ptn ch-out)))]
+      (is (= (async/<!! ch-out) [[[:column3] [3]] [[:column3] [3]]]))
+      (is (= (async/<!! ch-out) [[[:column3] [4]] [[:column3] [4]]]))
+      (is (= (async/<!! ch-out) [[[:column3] [5]] [[:column3] [5]]]))
+      (is (nil? @select))
+      (async/close! ch-out)))
+  (testing "Error handling"
+    (let [ch-ptn (async/to-chan [[1]])
+          ch-out (async/chan)]
+      (try ((impl/parallel-select-fn
+             {:src/conn  (db-spec)
+              :tgt/conn  (db-spec)
+              :src/query "SELECT column3
+                            FROM (VALUES (1, 2, 3),
+                                         (2, 3, 4),
+                                         (3, 4, 5)) AS _
+                           WHERE column1 = ?"
+              :tgt/query "SELECT_ERR column3
+                            FROM (VALUES (1, 2, 3),
+                                         (2, 3, 4),
+                                         (3, 4, 5)) AS _
+                           WHERE column1 = ?"}
+             ch-ptn ch-out))
+           (catch ExceptionInfo ex
+             (let [err (ex-data ex)]
+               (is (= (:err err) :parallel-select))
+               (is (= (:ptn err) [1]))
+               (is (= (-> err :ex :via first :type)
+                      'org.postgresql.util.PSQLException)))))
+      (async/close! ch-out)))
+  (testing "Close ch-out"
+    (let [ch-ptn (async/to-chan [[1] [2] [3]])
+          ch-out (async/chan)
+          select (future
+                   ((impl/parallel-select-fn
+                     {:src/conn  (db-spec)
+                      :tgt/conn  (db-spec)
+                      :src/query "SELECT column3
+                                    FROM (VALUES (1, 2, 3),
+                                                 (2, 3, 4),
+                                                 (3, 4, 5)) AS _
+                                   WHERE column1 = ?"
+                      :tgt/query "SELECT column3
+                                    FROM (VALUES (1, 2, 3),
+                                                 (2, 3, 4),
+                                                 (3, 4, 5)) AS _
+                                   WHERE column1 = ?"}
+                     ch-ptn ch-out)))]
+      (is (= (async/<!! ch-out) [[{:column3 3}] [{:column3 3}]]))
+      (async/close! ch-out)
+      (async/poll! ch-out)
+      (is (drained? ch-out))
+      (is (nil? @select))
+      (async/close! ch-ptn))))
