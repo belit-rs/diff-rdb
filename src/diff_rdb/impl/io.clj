@@ -6,9 +6,7 @@
    [clojure.java.io :as io]
    [clojure.core.async :as async]
    [next.jdbc :as jdbc]
-   [next.jdbc.prepare :as prep]
-   [next.jdbc.result-set :as rs]
-   [diff-rdb.impl.util :as util])
+   [next.jdbc.prepare :as prep])
   (:import
    (java.io BufferedReader)
    (clojure.lang IReduceInit)))

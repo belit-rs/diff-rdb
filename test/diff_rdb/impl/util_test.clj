@@ -4,7 +4,6 @@
 (ns diff-rdb.impl.util-test
   (:require
    [clojure.test :refer :all]
-   [clojure.string :as str]
    [diff-rdb.impl.util :as impl]))
 
 
