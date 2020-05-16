@@ -9,8 +9,7 @@
                  [org.clojure/core.async "1.1.587"]
                  [seancorfield/next.jdbc "1.0.424"]]
   :profiles {:dev
-             {:dependencies [[org.postgresql/postgresql "42.2.12"]]
-              :jvm-opts ["-Dclojure.core.async.go-checking=true"]
-              :global-vars {*warn-on-reflection* true}
-              :injections [(require 'next.jdbc.specs)
-                           (next.jdbc.specs/instrument)]}})
+             {:dependencies [[org.clojure/test.check "1.0.0"]
+                             [expound "0.8.4"]
+                             [org.postgresql/postgresql "42.2.12"]]
+              :jvm-opts ["-Dclojure.core.async.go-checking=true"]}})
