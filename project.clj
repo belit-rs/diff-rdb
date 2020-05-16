@@ -6,7 +6,7 @@
   :url "https://github.com/belit-rs/diff-rdb"
   :license {:url "https://github.com/belit-rs/diff-rdb/blob/master/LICENSE"}
   :dependencies [[org.clojure/clojure "1.10.1"]
-                 [org.clojure/core.async "1.1.587"]
+                 [org.clojure/core.async "1.2.603"]
                  [seancorfield/next.jdbc "1.0.424"]]
   :profiles {:dev
              {:dependencies [[org.clojure/test.check "1.0.0"]
