@@ -175,7 +175,7 @@
        (impl/run-in-pool 0 nil nil nil)))
   (are [args]
       (let [{:keys [n in out err]} args
-            ch-in  (async/to-chan in)
+            ch-in  (async/to-chan! in)
             ch-out (async/chan)
             ch-err (async/chan)
             pout   (promise)
@@ -257,7 +257,7 @@
 
 (deftest parallel-select-fn-test
   (testing "Without partitions"
-    (let [ch-ptn (async/to-chan [[]])
+    (let [ch-ptn (async/to-chan! [[]])
           ch-out (async/chan)
           select (future
                    ((impl/parallel-select-fn
@@ -270,7 +270,7 @@
       (is (nil? @select))
       (async/close! ch-out)))
   (testing "With partitions"
-    (let [ch-ptn (async/to-chan [[1] [2] [3]])
+    (let [ch-ptn (async/to-chan! [[1] [2] [3]])
           ch-out (async/chan)
           select (future
                    ((impl/parallel-select-fn
@@ -293,7 +293,7 @@
       (is (nil? @select))
       (async/close! ch-out)))
   (testing "Change options"
-    (let [ch-ptn (async/to-chan [[1] [2] [3]])
+    (let [ch-ptn (async/to-chan! [[1] [2] [3]])
           ch-out (async/chan)
           select (future
                    ((impl/parallel-select-fn
@@ -317,7 +317,7 @@
       (is (nil? @select))
       (async/close! ch-out)))
   (testing "Error handling"
-    (let [ch-ptn (async/to-chan [[1]])
+    (let [ch-ptn (async/to-chan! [[1]])
           ch-out (async/chan)]
       (try ((impl/parallel-select-fn
              {:src/con (db-spec)
@@ -341,7 +341,7 @@
                       'org.postgresql.util.PSQLException)))))
       (async/close! ch-out)))
   (testing "Close ch-out"
-    (let [ch-ptn (async/to-chan [[1] [2] [3]])
+    (let [ch-ptn (async/to-chan! [[1] [2] [3]])
           ch-out (async/chan)
           select (future
                    ((impl/parallel-select-fn
