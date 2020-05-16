@@ -103,7 +103,7 @@
        ;; avoid >!! deadlock
        (async/put! ch-pool ::wkr)
        nil))
-    (async/onto-chan ch-pool wkrs false)))
+    (async/onto-chan! ch-pool wkrs false)))
 
 
 (defn async-select
