@@ -20,8 +20,8 @@ Under development, **APIs may change**.
 
 #### TODO:
 - ~Core diff algorithm~
-- JDBC, parallelization, IO
-- User interface
+- IO, parallelization
+- UI, fixing diffs
 
 ## Documentation
 - [Installation](doc/installation.md)
