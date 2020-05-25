@@ -86,8 +86,8 @@
 (defn split-by-diff
   "Returns a map with channels subscribed to the ch-diff:
   * :ins - Channel that receives :ins rows.
-  * :upd - Channel that receives :upd rows.
   * :del - Channel that receives :del rows.
+  * :upd - Channel that receives :upd rows.
 
   Each channel will have sub-buf buffer and each will
   close after the ch-diff is closed and drained."

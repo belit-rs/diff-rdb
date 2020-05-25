@@ -122,8 +122,8 @@
 
 
 (s/def :split/ins :async/chan)
-(s/def :split/upd :async/chan)
 (s/def :split/del :async/chan)
+(s/def :split/upd :async/chan)
 
 
 (s/fdef diff-rdb.io/split-by-diff
@@ -131,8 +131,8 @@
                :sub-buf (s/or :buf :async/buf
                               :int (s/and nat-int? pos?)))
   :ret  (s/keys :req-un [:split/ins
-                         :split/upd
-                         :split/del]))
+                         :split/del
+                         :split/upd]))
 
 
 ;; ==============================
