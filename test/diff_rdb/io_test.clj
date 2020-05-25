@@ -139,7 +139,7 @@
 (deftest split-by-diff-test
   (let [ch-diff (async/chan)
         {:keys [ins del upd]}
-        (io/split-by-diff ch-diff 5)
+        (io/split-by-diff 5 ch-diff)
         ch-ins (async/into #{} ins)
         ch-del (async/into #{} del)
         ch-upd (async/into #{} upd)]

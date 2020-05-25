@@ -91,7 +91,7 @@
 
   Each channel will have sub-buf buffer and each will
   close after the ch-diff is closed and drained."
-  [ch-diff sub-buf]
+  [sub-buf ch-diff]
   (let [xf-seq (mapcat seq)
         ch-seq (async/chan sub-buf xf-seq)
         ch-pub (async/pub ch-seq first)

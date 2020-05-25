@@ -127,9 +127,9 @@
 
 
 (s/fdef diff-rdb.io/split-by-diff
-  :args (s/cat :ch-diff :async/chan
-               :sub-buf (s/or :buf :async/buf
-                              :int (s/and nat-int? pos?)))
+  :args (s/cat :sub-buf (s/or :buf :async/buf
+                              :int (s/and nat-int? pos?))
+               :ch-diff :async/chan)
   :ret  (s/keys :req-un [:split/ins
                          :split/del
                          :split/upd]))
