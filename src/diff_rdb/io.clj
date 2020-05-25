@@ -81,3 +81,26 @@
                       (fn diff-on-close []
                         (async/close! ch-data)))
     ch-diff))
+
+
+(defn split-by-diff
+  "Returns a map with channels subscribed to the ch-diff:
+  * :ins - Channel that receives :ins rows.
+  * :upd - Channel that receives :upd rows.
+  * :del - Channel that receives :del rows.
+
+  Each channel will have sub-buf buffer and each will
+  close after the ch-diff is closed and drained."
+  [ch-diff sub-buf]
+  (let [xf-seq (mapcat seq)
+        ch-seq (async/chan sub-buf xf-seq)
+        ch-pub (async/pub ch-seq first)
+        xf-sub (mapcat second)
+        ch-ins (async/chan sub-buf xf-sub)
+        ch-del (async/chan sub-buf xf-sub)
+        ch-upd (async/chan sub-buf xf-sub)]
+    (async/sub ch-pub :ins ch-ins)
+    (async/sub ch-pub :del ch-del)
+    (async/sub ch-pub :upd ch-upd)
+    (async/pipe ch-diff ch-seq)
+    {:ins ch-ins :del ch-del :upd ch-upd}))

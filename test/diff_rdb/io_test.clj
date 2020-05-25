@@ -134,3 +134,40 @@
       (async/close! ch-err)
       (is (drained? ch-err))
       (is (drained? ch-diff)))))
+
+
+(deftest split-by-diff-test
+  (let [ch-diff (async/chan)
+        {:keys [ins del upd]}
+        (io/split-by-diff ch-diff 5)
+        ch-ins (async/into #{} ins)
+        ch-del (async/into #{} del)
+        ch-upd (async/into #{} upd)]
+    (async/>!! ch-diff {:ins [{:foo 1 :bar 2}]})
+    (async/>!! ch-diff {:ins [{:foo 2 :bar 3}
+                              {:foo 3 :bar 4}]
+                        :del [{:foo 1 :bar 2}
+                              {:foo 2 :bar 3}]
+                        :upd [{:src  {:foo 1 :bar 2}
+                               :tgt  {:foo 2 :bar 2}
+                               :cols [:foo]}
+                              {:src  {:foo 1 :bar 2}
+                               :tgt  {:foo 1 :bar 1}
+                               :cols [:bar]}]})
+    (async/>!! ch-diff {})
+    (async/>!! ch-diff {:foo [{:foo 1 :bar 2}]})
+    (async/close! ch-diff)
+    (is (= (async/<!! ch-ins)
+           #{{:foo 1 :bar 2}
+             {:foo 2 :bar 3}
+             {:foo 3 :bar 4}}))
+    (is (= (async/<!! ch-del)
+           #{{:foo 1 :bar 2}
+             {:foo 2 :bar 3}}))
+    (is (= (async/<!! ch-upd)
+           #{{:src  {:foo 1 :bar 2}
+              :tgt  {:foo 2 :bar 2}
+              :cols [:foo]}
+             {:src  {:foo 1 :bar 2}
+              :tgt  {:foo 1 :bar 1}
+              :cols [:bar]}}))))

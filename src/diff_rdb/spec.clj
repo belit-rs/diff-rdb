@@ -8,13 +8,14 @@
    [diff-rdb.diff]
    [diff-rdb.io]
    [clojure.core.async.impl.channels])
-  (:import (clojure.core.async.impl.channels MMC)))
+  (:import (clojure.core.async.impl.protocols Channel Buffer)))
 
 
 ;; ==============================
 
 
-(s/def :async/chan #(instance? MMC %))
+(s/def :async/chan #(instance? Channel %))
+(s/def :async/buf  #(instance? Buffer  %))
 
 
 (s/def :db/col  keyword?)
@@ -120,6 +121,23 @@
 ;; ==============================
 
 
+(s/def :split/ins :async/chan)
+(s/def :split/upd :async/chan)
+(s/def :split/del :async/chan)
+
+
+(s/fdef diff-rdb.io/split-by-diff
+  :args (s/cat :ch-diff :async/chan
+               :sub-buf (s/or :buf :async/buf
+                              :int (s/and nat-int? pos?)))
+  :ret  (s/keys :req-un [:split/ins
+                         :split/upd
+                         :split/del]))
+
+
+;; ==============================
+
+
 (s/def :mapified/throwable map?)
 
 
@@ -147,7 +165,7 @@
                      :diff/ponders]
             :opt    [:ptn/con
                      :ptn/query
-                     :ptn/size                     
+                     :ptn/size
                      :src/con
                      :src/query
                      :src/con-opts
