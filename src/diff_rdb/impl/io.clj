@@ -28,7 +28,7 @@
   / there are no more lines to read / exception is thrown."
   [file]
   (reify IReduceInit
-    (reduce [this f init]
+    (reduce [_ f init]
       (with-open [^BufferedReader r
                   (io/reader file)]
         (loop [state init]
