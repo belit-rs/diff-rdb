@@ -53,7 +53,8 @@
         (transduce
          xform
          (fn drain-chan
-           ([_ v] (async/>!! chan v))
+           ([_ v] (when-not (async/>!! chan v)
+                    (reduced reducible)))
            ([_]   (async/close! chan)))
          nil reducible)
         (catch Throwable ex
