@@ -6,10 +6,10 @@
   :url "https://github.com/belit-rs/diff-rdb"
   :license {:url "https://github.com/belit-rs/diff-rdb/blob/master/LICENSE"}
   :dependencies [[org.clojure/clojure "1.10.1"]
-                 [org.clojure/core.async "1.2.603"]
-                 [seancorfield/next.jdbc "1.0.424"]]
+                 [org.clojure/core.async "1.3.610"]
+                 [seancorfield/next.jdbc "1.1.582"]]
   :profiles {:dev
-             {:dependencies [[org.clojure/test.check "1.0.0"]
-                             [expound "0.8.4"]
-                             [org.postgresql/postgresql "42.2.12"]]
+             {:dependencies [[org.clojure/test.check "1.1.0"]
+                             [expound "0.8.5"]
+                             [org.postgresql/postgresql "42.2.14"]]
               :jvm-opts ["-Dclojure.core.async.go-checking=true"]}})
