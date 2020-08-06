@@ -215,7 +215,34 @@
            :del [{:id 22 :foo 2 :bar 4 :baz 2}]
            :upd [{:src {:id  1 :foo 1 :bar 1 :baz 1}
                   :tgt {:id 11 :foo 1 :bar 1 :baz 3}
-                  :cols [:baz]}]}))
+                  :cols [:baz]}]}
+
+      ;; Example from doc/api.md
+      {:match-by [:name :edition]
+       :ponders  {:pages     1
+                  :published 2}}
+      [{:id 11 :name "Effective Java"                 :pages 414 :edition 3 :published "2018-01-06"}
+       {:id 12 :name "Java Concurrency in Practice"   :pages 412 :edition 1 :published "2006-05-19"}
+       {:id 13 :name "The Joy of Clojure"             :pages 520 :edition 2 :published "2014-06-13"}
+       {:id 14 :name "Clojure Programming"            :pages 630 :edition 1 :published "2012-04-22"}
+       {:id 15 :name "Concurrent Programming in Java" :pages 422 :edition 2 :published "1999-11-04"}
+       {:id 16 :name "Java Generics and Collections"  :pages 273 :edition 1 :published "2006-10-27"}]
+      [{:id 21 :name "Effective Java"                 :pages 412 :edition 3 :published "2018-03-08"}
+       {:id 22 :name "JCIP"                           :pages 273 :edition 1 :published "2006-10-27"}
+       {:id 23 :name "The Joy of Clojure"             :pages 520 :edition 2 :published "2014-06-17"}
+       {:id 24 :name "The Joy of Clojure"             :pages 320 :edition 2 :published "2014-06-17"}
+       {:id 25 :name "Clojure Programming"            :pages 630 :edition 1 :published "2012-04-22"}]
+      :=> {:ins [{:id 16 :name "Java Generics and Collections"  :pages 273 :edition 1 :published "2006-10-27"}
+                 {:id 12 :name "Java Concurrency in Practice"   :pages 412 :edition 1 :published "2006-05-19"}
+                 {:id 15 :name "Concurrent Programming in Java" :pages 422 :edition 2 :published "1999-11-04"}]
+           :del [{:id 24 :name "The Joy of Clojure" :pages 320 :edition 2 :published "2014-06-17"}
+                 {:id 22 :name "JCIP"               :pages 273 :edition 1 :published "2006-10-27"}]
+           :upd [{:src  {:id 13 :name "The Joy of Clojure" :pages 520 :edition 2 :published "2014-06-13"}
+                  :tgt  {:id 23 :name "The Joy of Clojure" :pages 520 :edition 2 :published "2014-06-17"}
+                  :cols [:published]}
+                 {:src  {:id 11 :name "Effective Java" :pages 414 :edition 3 :published "2018-01-06"}
+                  :tgt  {:id 21 :name "Effective Java" :pages 412 :edition 3 :published "2018-03-08"}
+                  :cols [:pages :published]}]}))
 
   (testing "Trash cases"
     (are [config src tgt _ ret]
@@ -355,4 +382,31 @@
                    :cols [:baz]}]}
            {:del [{:id 22 :foo 2 :bar 4 :baz 2}
                   {:id 33 :foo 2 :bar 4 :baz 2}]}
-           {:del [{:id 44 :foo 3 :bar 4 :baz 2}]}])))
+           {:del [{:id 44 :foo 3 :bar 4 :baz 2}]}]
+
+      ;; Example from doc/api.md
+      (diff {:match-by [:name :edition]
+             :ponders  {:pages     1
+                        :published 2}})
+      [[[{:id 11 :name "Effective Java"                 :pages 414 :edition 3 :published "2018-01-06"}
+         {:id 12 :name "Java Concurrency in Practice"   :pages 412 :edition 1 :published "2006-05-19"}
+         {:id 13 :name "The Joy of Clojure"             :pages 520 :edition 2 :published "2014-06-13"}
+         {:id 14 :name "Clojure Programming"            :pages 630 :edition 1 :published "2012-04-22"}
+         {:id 15 :name "Concurrent Programming in Java" :pages 422 :edition 2 :published "1999-11-04"}
+         {:id 16 :name "Java Generics and Collections"  :pages 273 :edition 1 :published "2006-10-27"}]
+        [{:id 21 :name "Effective Java"                 :pages 412 :edition 3 :published "2018-03-08"}
+         {:id 22 :name "JCIP"                           :pages 273 :edition 1 :published "2006-10-27"}
+         {:id 23 :name "The Joy of Clojure"             :pages 520 :edition 2 :published "2014-06-17"}
+         {:id 24 :name "The Joy of Clojure"             :pages 320 :edition 2 :published "2014-06-17"}
+         {:id 25 :name "Clojure Programming"            :pages 630 :edition 1 :published "2012-04-22"}]]]
+      :=> [{:del [{:id 24 :name "The Joy of Clojure" :pages 320 :edition 2 :published "2014-06-17"}]
+            :upd [{:src  {:id 13 :name "The Joy of Clojure" :pages 520 :edition 2 :published "2014-06-13"}
+                   :tgt  {:id 23 :name "The Joy of Clojure" :pages 520 :edition 2 :published "2014-06-17"}
+                   :cols [:published]}]}
+           {:ins [{:id 16 :name "Java Generics and Collections" :pages 273 :edition 1 :published "2006-10-27"}]}
+           {:ins [{:id 12 :name "Java Concurrency in Practice" :pages 412 :edition 1 :published "2006-05-19"}]}
+           {:upd [{:src  {:id 11 :name "Effective Java" :pages 414 :edition 3 :published "2018-01-06"}
+                   :tgt  {:id 21 :name "Effective Java" :pages 412 :edition 3 :published "2018-03-08"}
+                   :cols [:pages :published]}]}
+           {:ins [{:id 15 :name "Concurrent Programming in Java" :pages 422 :edition 2 :published "1999-11-04"}]}
+           {:del [{:id 22 :name "JCIP" :pages 273 :edition 1 :published "2006-10-27"}]}])))

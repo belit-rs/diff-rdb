@@ -31,7 +31,7 @@ Source (`src`) and target (`tgt`) data sets are compared, each a collection of m
                   :published 2}}
       src tgt)
 
-|=> {;; Rows from src missing in tgt
+:=> {;; Rows from src missing in tgt
      :ins [{:id 16 :name "Java Generics and Collections"  :pages 273 :edition 1 :published "2006-10-27"}
            {:id 12 :name "Java Concurrency in Practice"   :pages 412 :edition 1 :published "2006-05-19"}
            {:id 15 :name "Concurrent Programming in Java" :pages 422 :edition 2 :published "1999-11-04"}]
@@ -63,7 +63,7 @@ Configuration map for `diff` contains:
 
 (into [] xf [[src tgt]])
 
-|=> [{:del [{:id 24 :name "The Joy of Clojure" :pages 320 :edition 2 :published "2014-06-17"}]
+:=> [{:del [{:id 24 :name "The Joy of Clojure" :pages 320 :edition 2 :published "2014-06-17"}]
       :upd [{:src  {:id 13 :name "The Joy of Clojure" :pages 520 :edition 2 :published "2014-06-13"}
              :tgt  {:id 23 :name "The Joy of Clojure" :pages 520 :edition 2 :published "2014-06-17"}
              :cols [:published]}]}
