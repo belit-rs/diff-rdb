@@ -8,7 +8,8 @@
    [next.jdbc :as jdbc]
    [next.jdbc.prepare :as prep])
   (:import
-   (java.io BufferedReader)
+   (java.io BufferedReader
+            BufferedWriter)
    (clojure.lang IReduceInit)))
 
 
@@ -157,3 +158,29 @@
                            (ex-info "parallel-select failed")
                            throw)))
               (recur))))))))
+
+
+(defn drain-to-file
+  "Writes values taken from chan to a file at a given path.
+  Each value is transformed to a string via stringifier fn
+  and written as a separate line. Returns a promise-chan
+  that yields true when chan is exhausted or an exception,
+  if error occured."
+  [path stringifier chan]
+  (let [file (io/file path)
+        done (async/promise-chan)]
+    (async/thread
+      (try
+        (with-open [^BufferedWriter w
+                    (io/writer file)]
+          (loop []
+            (when-some [v (async/<!! chan)]
+              (.write w ^String (stringifier v))
+              (.newLine w)
+              (recur))))
+        (async/>!! done true)
+        (catch Throwable ex
+          (async/>!! done ex))
+        (finally
+          (async/close! done))))
+    done))

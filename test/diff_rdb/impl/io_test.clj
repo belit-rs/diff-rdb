@@ -5,13 +5,15 @@
   (:require
    [clojure.test :refer :all]
    [clojure.string :as str]
+   [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.core.async :as async]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as rs]
    [diff-rdb.impl.io :as impl])
   (:import
-   (java.io IOException)
+   (java.io IOException
+            FileNotFoundException)
    (java.lang ArithmeticException)
    (clojure.lang ExceptionInfo)
    (org.postgresql.util PSQLException)))
@@ -364,3 +366,25 @@
       (is (drained? ch-out))
       (is (nil? @select))
       (async/close! ch-ptn))))
+
+
+(deftest drain-to-file-test
+  (testing "Standard case"
+    (with-file [f (io/file "foo.txt")]
+      (let [d [{:foo 1 :bar 1 :baz 1}
+               {:foo 2 :bar 2 :baz nil}]
+            c (async/to-chan d)
+            p (impl/drain-to-file f pr-str c)]
+        (is (async/<!! p))
+        (is (= (into
+                []
+                (map edn/read-string)
+                (impl/reducible-lines f))
+               d)))))
+  (testing "Error handling"
+    (let [f "foo/bar.txt"
+          d [{:foo 1 :bar 1 :baz 1}
+             {:foo 2 :bar 2 :baz nil}]
+          c (async/to-chan d)
+          p (impl/drain-to-file f pr-str c)]
+      (is (thrown? FileNotFoundException (impl/<?? p))))))
