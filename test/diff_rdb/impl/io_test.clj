@@ -12,7 +12,8 @@
    [next.jdbc.result-set :as rs]
    [diff-rdb.impl.io :as impl])
   (:import
-   (java.io IOException
+   (java.io File
+            IOException
             FileNotFoundException)
    (java.lang ArithmeticException)
    (clojure.lang ExceptionInfo)
@@ -374,17 +375,36 @@
       (let [d [{:foo 1 :bar 1 :baz 1}
                {:foo 2 :bar 2 :baz nil}]
             c (async/to-chan d)
-            p (impl/drain-to-file f pr-str c)]
-        (is (async/<!! p))
+            c (impl/drain-to-file f pr-str nil c)]
+        (async/<!! c)
         (is (= (into
                 []
                 (map edn/read-string)
                 (impl/reducible-lines f))
                d)))))
+  (testing "Make parent dir"
+    (let [p "foo"
+          f (str p File/separator "bar.txt")]
+      (try
+        (let [d [{:foo 1 :bar 1 :baz 1}
+                 {:foo 2 :bar 2 :baz nil}]
+              c (async/to-chan d)
+              c (impl/drain-to-file f pr-str nil c)]
+          (async/<!! c)
+          (is (= (into
+                  []
+                  (map edn/read-string)
+                  (impl/reducible-lines f))
+                 d)))
+        (finally (io/delete-file f)
+                 (io/delete-file p)))))
   (testing "Error handling"
-    (let [f "foo/bar.txt"
-          d [{:foo 1 :bar 1 :baz 1}
-             {:foo 2 :bar 2 :baz nil}]
-          c (async/to-chan d)
-          p (impl/drain-to-file f pr-str c)]
-      (is (thrown? FileNotFoundException (impl/<?? p))))))
+    (with-file [f (io/file "foo.txt")]
+      (let [d [{:foo 1 :bar 1 :baz 1}
+               {:foo 2 :bar 2 :baz nil}]
+            e (promise)
+            c (async/to-chan d)
+            c (impl/drain-to-file f inc #(deliver e %) c)]
+        (async/<!! c)
+        (is (= (-> @e Throwable->map :via first :type)
+               'java.lang.ClassCastException))))))
