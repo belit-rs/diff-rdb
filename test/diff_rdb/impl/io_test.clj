@@ -10,50 +10,16 @@
    [clojure.core.async :as async]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as rs]
-   [diff-rdb.impl.io :as impl])
+   [diff-rdb.impl.io :as impl]
+   [diff-rdb.dev :refer [with-file
+                         create-file
+                         drained?
+                         db-spec]])
   (:import
-   (java.io File
-            IOException
-            FileNotFoundException)
+   (java.io File IOException)
    (java.lang ArithmeticException)
    (clojure.lang ExceptionInfo)
    (org.postgresql.util PSQLException)))
-
-
-(defmacro with-file
-  [bindings & body]
-  (assert (= (count bindings) 2))
-  `(let ~bindings
-     (try
-       ~@body
-       (finally
-         (io/delete-file
-          ~(bindings 0))))))
-
-
-(defn create-file
-  []
-  (let [f (io/file "foo.txt")]
-    (->> ["foo" "bar" "baz"]
-         (str/join \newline)
-         (spit f))
-    f))
-
-
-(defn db-spec
-  []
-  {:dbtype   "postgresql"
-   :host     "localhost"
-   :port     5432
-   :dbname   "postgres"
-   :user     "test"
-   :password "test"})
-
-
-(defn drained?
-  [chan]
-  (and (nil? (async/<!! chan))
-       (not  (async/>!! chan ::check))))
 
 
 (deftest <??-test

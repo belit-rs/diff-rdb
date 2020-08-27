@@ -5,23 +5,9 @@
   (:require
    [clojure.test :refer :all]
    [clojure.core.async :as async]
-   [diff-rdb.io :as io]))
-
-
-(defn db-spec
-  []
-  {:dbtype   "postgresql"
-   :host     "localhost"
-   :port     5432
-   :dbname   "postgres"
-   :user     "test"
-   :password "test"})
-
-
-(defn drained?
-  [chan]
-  (and (nil? (async/<!! chan))
-       (not  (async/>!! chan ::check))))
+   [diff-rdb.io :as io]
+   [diff-rdb.dev :refer [drained?
+                         db-spec]]))
 
 
 (deftest ptn-test
