@@ -78,8 +78,7 @@
 (s/fdef diff-rdb.io/ptn
   :args (s/cat :config (s/keys :req [:ptn/con
                                      :ptn/query
-                                     :ptn/size])
-               :ch-err :async/chan)
+                                     :ptn/size]))
   :ret  :async/chan)
 
 

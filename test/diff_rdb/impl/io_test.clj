@@ -12,6 +12,7 @@
    [next.jdbc.result-set :as rs]
    [diff-rdb.impl.io :as impl]
    [diff-rdb.dev :refer [with-file
+                         thrown-uncaught?
                          create-file
                          drained?
                          db-spec]])
@@ -50,7 +51,7 @@
     (with-file [f (create-file)]
       (let [r (impl/reducible-lines f)
             c (impl/reducible->chan
-               (map str/upper-case) r (fn [_]))]
+               (map str/upper-case) r)]
         (is (= (async/<!! c) "FOO"))
         (is (= (async/<!! c) "BAR"))
         (is (= (async/<!! c) "BAZ"))
@@ -65,7 +66,7 @@
                               (2, 2, 2),
                               (3, 3, 3)) AS _"])
           c (impl/reducible->chan
-             (map #(into {} %)) r (fn [_]))]
+             (map #(into {} %)) r)]
       (is (= (async/<!! c) {:column1 1}))
       (is (= (async/<!! c) {:column1 2}))
       (is (= (async/<!! c) {:column1 3}))
@@ -76,15 +77,11 @@
               {:column1 3}]))))
   (testing "Exception"
     (with-file [f (create-file)]
-      (let [e (promise)
-            c (impl/reducible->chan
-               (map #(/ (count %) 0))
-               (impl/reducible-lines f)
-               #(->> (Throwable->map %)
-                     :cause (deliver e)))]
-        (is (drained? c))
-        (is (= (deref e 50 false)
-               "Divide by zero")))))
+      (is (thrown-uncaught?
+           ExceptionInfo
+           (impl/reducible->chan
+            (map #(/ (count %) 0))
+            (impl/reducible-lines f))))))
   (testing "Resource management"
     (let [f (create-file)
           r (impl/reducible-lines f)]
@@ -92,8 +89,7 @@
     (let [f (create-file)
           r (impl/reducible-lines f)
           c (impl/reducible->chan
-             (map str/upper-case)
-             r (fn [_]))]
+             (map str/upper-case) r)]
       (is (= (async/<!! c) "FOO"))
       (is (thrown?
            IOException
@@ -304,7 +300,7 @@
              ch-ptn ch-out))
            (catch ExceptionInfo ex
              (let [err (ex-data ex)]
-               (is (= (:err err) :parallel-select))
+               (is (= (:err err) ::impl/parallel-select))
                (is (= (:ptn err) [1]))
                (is (= (-> err :ex :via first :type)
                       'org.postgresql.util.PSQLException)))))
@@ -341,7 +337,7 @@
       (let [d [{:foo 1 :bar 1 :baz 1}
                {:foo 2 :bar 2 :baz nil}]
             c (async/to-chan d)
-            c (impl/drain-to-file f pr-str nil c)]
+            c (impl/drain-to-file f pr-str c)]
         (async/<!! c)
         (is (= (into
                 []
@@ -355,7 +351,7 @@
         (let [d [{:foo 1 :bar 1 :baz 1}
                  {:foo 2 :bar 2 :baz nil}]
               c (async/to-chan d)
-              c (impl/drain-to-file f pr-str nil c)]
+              c (impl/drain-to-file f pr-str c)]
           (async/<!! c)
           (is (= (into
                   []
@@ -364,13 +360,11 @@
                  d)))
         (finally (io/delete-file f)
                  (io/delete-file p)))))
-  (testing "Error handling"
+  (testing "Exception"
     (with-file [f (io/file "foo.txt")]
       (let [d [{:foo 1 :bar 1 :baz 1}
                {:foo 2 :bar 2 :baz nil}]
-            e (promise)
-            c (async/to-chan d)
-            c (impl/drain-to-file f inc #(deliver e %) c)]
-        (async/<!! c)
-        (is (= (-> @e Throwable->map :via first :type)
-               'java.lang.ClassCastException))))))
+            c (async/to-chan d)]
+        (is (thrown-uncaught?
+             ExceptionInfo
+             (impl/drain-to-file f inc c)))))))

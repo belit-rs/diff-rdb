@@ -44,10 +44,8 @@
   "Creates and returns a channel with the contents of
   reducible, transformed using the xform transducer.
   Channel closes when reducible is fully reduced or if
-  exception is thrown. Ex-handler is a function of one
-  argument - if an exception occurs it will be called
-  with the Throwable as an argument."
-  [xform reducible ex-handler]
+  an exception is thrown (will be re-thrown as ex-info)."
+  [xform reducible]
   (let [chan (async/chan)]
     (async/thread
       (try
@@ -60,7 +58,10 @@
          nil reducible)
         (catch Throwable ex
           (async/close! chan)
-          (ex-handler ex))))
+          (->> {:err ::reducible->chan
+                :ex  (Throwable->map ex)}
+               (ex-info "reducible->chan failed")
+               throw))))
     chan))
 
 
@@ -152,7 +153,7 @@
                           tgt (<?? tgt)]
                       (async/>!! ch-out [src tgt]))
                     (catch Throwable ex
-                      (->> {:err :parallel-select
+                      (->> {:err ::parallel-select
                             :ptn ptn
                             :ex  (Throwable->map ex)}
                            (ex-info "parallel-select failed")
@@ -163,10 +164,9 @@
 (defn drain-to-file
   "Writes values taken from a chan to a file at a given path.
   Each value is transformed to a string via stringifier fn
-  and written as a separate line. If an exception is thrown,
-  ex-handler will be called with the Throwable as an argument.
-  Creates all missing parent directories of the file."
-  [file stringifier ex-handler chan]
+  and written as a separate line. Creates all missing parent
+  directories of the file. Exceptions are re-thrown as ex-info."
+  [file stringifier chan]
   (io/make-parents file)
   (async/thread
     (try
@@ -178,4 +178,7 @@
             (.newLine w)
             (recur))))
       (catch Throwable ex
-        (ex-handler ex)))))
+        (->> {:err ::drain-to-file
+              :ex  (Throwable->map ex)}
+             (ex-info "drain-to-file failed")
+             throw)))))

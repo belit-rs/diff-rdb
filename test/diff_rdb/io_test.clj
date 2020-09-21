@@ -6,8 +6,12 @@
    [clojure.test :refer :all]
    [clojure.core.async :as async]
    [diff-rdb.io :as io]
-   [diff-rdb.dev :refer [drained?
-                         db-spec]]))
+   [diff-rdb.impl.io :as impl]
+   [diff-rdb.dev :refer [thrown-uncaught?
+                         drained?
+                         db-spec]])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 
 (deftest ptn-test
@@ -18,30 +22,21 @@
                               (VALUES
                                (1), (2), (3), (4),
                                (5), (6), (7), (8)) AS _"}
-          ch-err (async/chan)
-          ch-ptn (io/ptn config ch-err)]
+          ch-ptn (io/ptn config)]
       (is (= (async/<!! ch-ptn) [1 2 3]))
       (is (= (async/<!! ch-ptn) [4 5 6]))
       (is (= (async/<!! ch-ptn) [7 8 7]))
-      (is (drained? ch-ptn))
-      (async/close! ch-err)
-      (is (drained? ch-err))))
+      (is (drained? ch-ptn))))
   (testing "Error handling"
     (let [config {:ptn/size  3
                   :ptn/con   (db-spec)
                   :ptn/query "SELECT * FROM_ERR
                               (VALUES
                                (1), (2), (3), (4),
-                               (5), (6), (7), (8)) AS _"}
-          ch-err (async/chan)
-          ch-ptn (io/ptn config ch-err)]
-      (is (drained? ch-ptn))
-      (let [err (async/<!! ch-err)]
-        (is (= (:err err) :ptn))
-        (is (= (-> err :ex :via first :type)
-               'org.postgresql.util.PSQLException)))
-      (async/close! ch-err)
-      (is (drained? ch-err)))))
+                               (5), (6), (7), (8)) AS _"}]
+      (is (thrown-uncaught?
+           ExceptionInfo
+           (io/ptn config))))))
 
 
 (deftest diff-test
@@ -113,7 +108,7 @@
           ch-ptn  (async/to-chan! [[1]])
           ch-diff (io/diff config ch-err ch-ptn)]
       (let [err (async/<!! ch-err)]
-        (is (= (:err err) :parallel-select))
+        (is (= (:err err) ::impl/parallel-select))
         (is (= (:ptn err) [1]))
         (is (= (-> err :ex :via first :type)
                'org.postgresql.util.PSQLException)))

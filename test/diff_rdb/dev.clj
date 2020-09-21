@@ -10,7 +10,8 @@
    [clojure.core.async :as async]
    [expound.alpha :as expound]
    [next.jdbc.specs]
-   [diff-rdb.spec]))
+   [diff-rdb.spec])
+  (:import (java.util UUID)))
 
 
 (do (set! s/*explain-out* expound/printer)
@@ -55,6 +56,20 @@
        (finally
          (io/delete-file
           ~(bindings 0))))))
+
+
+(defmacro thrown-uncaught?
+  [c expr]
+  `(let [p# (promise)]
+     (try (Thread/setDefaultUncaughtExceptionHandler
+           (reify Thread$UncaughtExceptionHandler
+             (uncaughtException [_ _ ex#]
+               (assert (not (realized? p#)))
+               (deliver p# (type ex#)))))
+          (let [expr# ~expr]
+            (= ~c (deref p# 1000 (UUID/randomUUID))))
+          (finally
+            (Thread/setDefaultUncaughtExceptionHandler nil)))))
 
 
 (defn create-file
