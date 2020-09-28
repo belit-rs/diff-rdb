@@ -93,6 +93,26 @@
       (async/close! ch-err)
       (is (drained? ch-err))))
   (testing "Error handling"
+    (let [config {:match-by  [:c1]
+                  :ponders   {:c2 3 :c3 2}
+                  :workers   1
+                  :src/con   (assoc (db-spec) :dbtype "oracle")
+                  :tgt/con   (db-spec)
+                  :src/query "SELECT * FROM
+                               (VALUES (1)) AS _ (c1)
+                               WHERE c1 IN (?)"
+                  :tgt/query "SELECT * FROM
+                               (VALUES (2)) AS _ (c1)
+                               WHERE c1 IN (?)"}
+          ch-err (async/chan)
+          ch-ptn (async/to-chan! [[1]])]
+      (is (thrown-uncaught?
+           ExceptionInfo
+           (io/diff config ch-err ch-ptn)))
+      (async/close! ch-err)
+      (is (drained? ch-err))
+      (is (= (async/<!! (async/into [] ch-ptn)) [[1]]))))
+  (testing "Recoverable error handling"
     (let [config  {:match-by  [:c1]
                    :ponders   {:c2 3 :c3 2}
                    :workers   2

@@ -70,8 +70,13 @@
                       (impl/parallel-select-fn
                        config ch-ptn ch-data)
                       (fn diff-ex-handler [ex]
-                        (->> (ex-data ex)
-                             (async/>!! ch-err)))
+                        (let [data (ex-data ex)]
+                          (if (contains? data :ptn)
+                            (async/>!! ch-err data)
+                            (->> {:err ::impl/parallel-select
+                                  :ex  (Throwable->map ex)}
+                                 (ex-info "parallel-select failed")
+                                 throw))))
                       (fn diff-on-close []
                         (async/close! ch-data)))
     ch-diff))
