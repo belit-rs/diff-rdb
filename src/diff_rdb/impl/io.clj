@@ -129,26 +129,22 @@
   Function loops until either ch-ptn or ch-out is closed or if
   exception is thrown (failed ptn is captured in the ex-data)."
   [config ch-ptn ch-out]
-  (let [con-src      (:src/con config)
-        con-tgt      (:tgt/con config)
-        qry-src      [(:src/query config)]
-        qry-tgt      [(:tgt/query config)]
-        con-opts-src (:src/con-opts config {})
-        con-opts-tgt (:tgt/con-opts config {})
-        pst-opts-src (:src/pst-opts config {})
-        pst-opts-tgt (:tgt/pst-opts config {})
-        exe-opts-src (:src/exe-opts config {})
-        exe-opts-tgt (:tgt/exe-opts config {})]
+  (let [con-src (:src/con config)
+        con-tgt (:tgt/con config)
+        opt-src (:src/opts config {})
+        opt-tgt (:tgt/opts config {})
+        qry-src [(:src/query config)]
+        qry-tgt [(:tgt/query config)]]
     (fn parallel-select []
-      (with-open [con-src (jdbc/get-connection con-src con-opts-src)
-                  con-tgt (jdbc/get-connection con-tgt con-opts-tgt)
-                  pst-src (jdbc/prepare con-src qry-src pst-opts-src)
-                  pst-tgt (jdbc/prepare con-tgt qry-tgt pst-opts-tgt)]
+      (with-open [con-src (jdbc/get-connection con-src opt-src)
+                  con-tgt (jdbc/get-connection con-tgt opt-tgt)
+                  pst-src (jdbc/prepare con-src qry-src opt-src)
+                  pst-tgt (jdbc/prepare con-tgt qry-tgt opt-tgt)]
         (loop []
           (when-some [ptn (async/<!! ch-ptn)]
             (when (try
-                    (let [src (async-select pst-src ptn exe-opts-src)
-                          tgt (async-select pst-tgt ptn exe-opts-tgt)
+                    (let [src (async-select pst-src ptn opt-src)
+                          tgt (async-select pst-tgt ptn opt-tgt)
                           src (<?? src)
                           tgt (<?? tgt)]
                       (async/>!! ch-out [src tgt]))

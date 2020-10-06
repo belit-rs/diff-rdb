@@ -274,7 +274,7 @@
                                                  (2, 3, 4),
                                                  (3, 4, 5)) AS _
                                    WHERE column1 = ?"
-                      :src/exe-opts {:builder-fn rs/as-arrays}}
+                      :src/opts {:builder-fn rs/as-arrays}}
                      ch-ptn ch-out)))]
       (is (= (async/<!! ch-out) [[[:column3] [3]] [{:column3 3}]]))
       (is (= (async/<!! ch-out) [[[:column3] [4]] [{:column3 4}]]))

@@ -51,13 +51,9 @@
   * :tgt/query - SQL query for tgt data.
 
     [OPTIONAL]
-  * :ponders      - See `diff-rdb.diff/diff`.
-  * :src/con-opts - Map with jdbc opts for src db connection.
-  * :tgt/con-opts - Map with jdbc opts for tgt db connection.
-  * :src/pst-opts - Map with jdbc opts for src prep statement.
-  * :tgt/pst-opts - Map with jdbc opts for tgt prep statement.
-  * :src/exe-opts - Map with next.jdbc opts for src result set.
-  * :tgt/exe-opts - Map with next.jdbc opts for tgt result set."
+  * :ponders  - See `diff-rdb.diff/diff`.
+  * :src/opts - Map with all jdbc options for src.
+  * :tgt/opts - Map with all jdbc options for tgt."
   [config ch-err ch-ptn]
   (let [wkrs    (:workers config)
         ch-data (async/chan wkrs)

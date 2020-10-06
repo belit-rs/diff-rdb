@@ -90,12 +90,8 @@
 (s/def :tgt/con      ::jdbc/db-spec)
 (s/def :src/query    string?)
 (s/def :tgt/query    string?)
-(s/def :src/con-opts ::jdbc/opts-map)
-(s/def :tgt/con-opts ::jdbc/opts-map)
-(s/def :src/pst-opts ::jdbc/opts-map)
-(s/def :tgt/pst-opts ::jdbc/opts-map)
-(s/def :src/exe-opts ::jdbc/opts-map)
-(s/def :tgt/exe-opts ::jdbc/opts-map)
+(s/def :src/opts ::jdbc/opts-map)
+(s/def :tgt/opts ::jdbc/opts-map)
 
 
 (s/fdef diff-rdb.io/diff
@@ -106,12 +102,8 @@
                                         :tgt/con
                                         :src/query
                                         :tgt/query]
-                               :opt    [:src/con-opts
-                                        :tgt/con-opts
-                                        :src/pst-opts
-                                        :tgt/pst-opts
-                                        :src/exe-opts
-                                        :tgt/exe-opts])
+                               :opt    [:src/opts
+                                        :tgt/opts])
                :ch-err :async/chan
                :ch-ptn :async/chan)
   :ret  :async/chan)
@@ -167,11 +159,7 @@
                      :ptn/size
                      :src/con
                      :src/query
-                     :src/con-opts
-                     :src/pst-opts
-                     :src/exe-opts
+                     :src/opts
                      :tgt/con
                      :tgt/query
-                     :tgt/con-opts
-                     :tgt/pst-opts
-                     :tgt/exe-opts])))
+                     :tgt/opts])))
