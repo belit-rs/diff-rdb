@@ -3,6 +3,7 @@
 
 (ns diff-rdb.spec
   (:require
+   [clojure.string :as str]
    [clojure.spec.alpha :as s]
    [next.jdbc.specs :as jdbc]
    [diff-rdb.diff]
@@ -12,6 +13,11 @@
 
 
 ;; ==============================
+
+
+(s/def ::not-blank-string
+  (s/and string?
+         (complement str/blank?)))
 
 
 (s/def :async/chan #(instance? Channel %))
@@ -32,6 +38,14 @@
 (s/def :db/val  any?)
 (s/def :db/vals (s/coll-of :db/val
                            :kind sequential?))
+
+
+(s/def :db/conn  ::jdbc/connectable)
+(s/def :db/query ::not-blank-string)
+(s/def :db/opts  ::jdbc/opts-map)
+(s/def :db/plan  (s/keys :req-un [:db/conn
+                                  :db/query]
+                         :opt-un [:db/opts]))
 
 
 ;; ==============================
@@ -70,15 +84,13 @@
 ;; ==============================
 
 
-(s/def :ptn/con   ::jdbc/db-spec)
-(s/def :ptn/query string?)
-(s/def :ptn/size  (s/and nat-int? pos?))
+(s/def :ptn/size (s/and nat-int? pos?))
+(s/def :ptn/plan :db/plan)
 
 
 (s/fdef diff-rdb.io/ptn
-  :args (s/cat :config (s/keys :req [:ptn/con
-                                     :ptn/query
-                                     :ptn/size]))
+  :args (s/cat :config (s/keys :req [:ptn/size
+                                     :ptn/plan]))
   :ret  :async/chan)
 
 
@@ -86,24 +98,16 @@
 
 
 (s/def :diff/workers (s/and nat-int? pos?))
-(s/def :src/con      ::jdbc/db-spec)
-(s/def :tgt/con      ::jdbc/db-spec)
-(s/def :src/query    string?)
-(s/def :tgt/query    string?)
-(s/def :src/opts ::jdbc/opts-map)
-(s/def :tgt/opts ::jdbc/opts-map)
+(s/def :src/plan     :db/plan)
+(s/def :tgt/plan     :db/plan)
 
 
 (s/fdef diff-rdb.io/diff
   :args (s/cat :config (s/keys :req-un [:diff/workers
                                         :diff/match-by]
                                :opt-un [:diff/ponders]
-                               :req    [:src/con
-                                        :tgt/con
-                                        :src/query
-                                        :tgt/query]
-                               :opt    [:src/opts
-                                        :tgt/opts])
+                               :req    [:src/plan
+                                        :tgt/plan])
                :ch-err :async/chan
                :ch-ptn :async/chan)
   :ret  :async/chan)
@@ -147,19 +151,3 @@
 
 
 ;; ==============================
-
-
-(comment ;; TODO spec2 + select
-  (s/def ::config
-    (s/keys :opt-un [:diff/workers
-                     :diff/match-by
-                     :diff/ponders]
-            :opt    [:ptn/con
-                     :ptn/query
-                     :ptn/size
-                     :src/con
-                     :src/query
-                     :src/opts
-                     :tgt/con
-                     :tgt/query
-                     :tgt/opts])))

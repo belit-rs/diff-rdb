@@ -16,16 +16,18 @@
   partitions and closes when all partitions are loaded
   or if an exception occured.
 
-  Entries of the config map [REQUIRED]:
-  * :ptn/con   - Database connection specification.
-  * :ptn/query - SQL query for data to be partitioned.
-  * :ptn/size  - Number of elements in each partition."
+  REQUIRED entries of the config map:
+  * :ptn/size - Number of elements in each partition.
+  * :ptn/plan - Map with REQUIRED entries:
+                * :conn  - Database connection specification.
+                * :query - SQL query for data to be partitioned."
   [config]
-  (let [{:ptn/keys [con query size]} config
+  (let [{:keys [conn query]} (:ptn/plan config)
+        size                 (:ptn/size config)
         opts {:builder-fn rs/as-arrays}]
     (impl/reducible->chan
      (util/ptn-xf size)
-     (jdbc/plan con [query] opts))))
+     (jdbc/plan conn [query] opts))))
 
 
 (defn diff
@@ -39,21 +41,20 @@
   Entries of the config map:
 
     [REQUIRED]
-  * :workers   - Number of concurrent processes that will take
-                 ptns and select data (src and tgt queries are
-                 executed in parallel, too); number of src and
-                 tgt db connections and prepared statements to
-                 be opened and reused.
-  * :match-by  - See `diff-rdb.diff/diff`.
-  * :src/con   - Src database connection specification.
-  * :tgt/con   - Tgt database connection specification.
-  * :src/query - SQL query for src data.
-  * :tgt/query - SQL query for tgt data.
+  * :workers  - Number of concurrent processes that will take
+                ptns and select data (src and tgt queries are
+                executed in parallel, too); number of src and
+                tgt db connections and prepared statements to
+                be opened and reused.
+  * :match-by - See `diff-rdb.diff/diff`.
+  * :src/plan - Map with REQUIRED entries:
+  * :tgt/plan / * :conn  - Database connection specification.
+                * :query - SQL query for data to be diff'd.
+                And OPTIONAL entries:
+                * :opts  - Map with all jdbc options.
 
     [OPTIONAL]
-  * :ponders  - See `diff-rdb.diff/diff`.
-  * :src/opts - Map with all jdbc options for src.
-  * :tgt/opts - Map with all jdbc options for tgt."
+  * :ponders - See `diff-rdb.diff/diff`."
   [config ch-err ch-ptn]
   (let [wkrs    (:workers config)
         ch-data (async/chan wkrs)
@@ -64,7 +65,9 @@
     (async/pipeline cores ch-diff xf ch-data)
     (impl/run-in-pool wkrs
                       (impl/parallel-select-fn
-                       config ch-ptn ch-data)
+                       (:src/plan config)
+                       (:tgt/plan config)
+                       ch-ptn ch-data)
                       (fn diff-ex-handler [ex]
                         (let [data (ex-data ex)]
                           (if (contains? data :ptn)

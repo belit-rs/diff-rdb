@@ -16,24 +16,21 @@
 
 (deftest ptn-test
   (testing "Standard case"
-    (let [config {:ptn/size  3
-                  :ptn/con   (db-spec)
-                  :ptn/query "SELECT * FROM
-                              (VALUES
-                               (1), (2), (3), (4),
-                               (5), (6), (7), (8)) AS _"}
+    (let [config {:ptn/size 3
+                  :ptn/plan {:conn  (db-spec)
+                             :query "SELECT * FROM
+                                      (VALUES
+                                       (1), (2), (3), (4),
+                                       (5), (6), (7), (8)) AS _"}}
           ch-ptn (io/ptn config)]
       (is (= (async/<!! ch-ptn) [1 2 3]))
       (is (= (async/<!! ch-ptn) [4 5 6]))
       (is (= (async/<!! ch-ptn) [7 8 7]))
       (is (drained? ch-ptn))))
   (testing "Error handling"
-    (let [config {:ptn/size  3
-                  :ptn/con   (db-spec)
-                  :ptn/query "SELECT * FROM_ERR
-                              (VALUES
-                               (1), (2), (3), (4),
-                               (5), (6), (7), (8)) AS _"}]
+    (let [config {:ptn/size 3
+                  :ptn/plan {:conn  (db-spec)
+                             :query "SELECT * FROM_ERR"}}]
       (is (thrown-uncaught?
            ExceptionInfo
            (io/ptn config))))))
@@ -41,19 +38,19 @@
 
 (deftest diff-test
   (testing "Without partitioning"
-    (let [config  {:match-by  [:c1]
-                   :ponders   {:c2 3 :c3 2}
-                   :workers   2
-                   :src/con   (db-spec)
-                   :tgt/con   (db-spec)
-                   :src/query "SELECT * FROM
-                                (VALUES (1, 3, 5, 6),
-                                        (2, 7, 9, 8))
-                                AS _ (c1, c2, c3, c4)"
-                   :tgt/query "SELECT * FROM
-                                (VALUES (2, 2, 9, 4),
-                                        (3, 6, 7, 8))
-                                AS _ (c1, c2, c3, c4)"}
+    (let [config  {:match-by [:c1]
+                   :ponders  {:c2 3 :c3 2}
+                   :workers  2
+                   :src/plan {:conn  (db-spec)
+                              :query "SELECT * FROM
+                                       (VALUES (1, 3, 5, 6),
+                                               (2, 7, 9, 8))
+                                       AS _ (c1, c2, c3, c4)"}
+                   :tgt/plan {:conn  (db-spec)
+                              :query "SELECT * FROM
+                                       (VALUES (2, 2, 9, 4),
+                                               (3, 6, 7, 8))
+                                       AS _ (c1, c2, c3, c4)"}}
           ch-err  (async/chan)
           ch-ptn  (async/to-chan! [[]])
           ch-diff (io/diff config ch-err ch-ptn)]
@@ -66,21 +63,21 @@
       (async/close! ch-err)
       (is (drained? ch-err))))
   (testing "With partitioning"
-    (let [config  {:match-by  [:c1]
-                   :ponders   {:c2 3 :c3 2}
-                   :workers   2
-                   :src/con   (db-spec)
-                   :tgt/con   (db-spec)
-                   :src/query "SELECT * FROM
-                                (VALUES (1, 3, 5, 6),
-                                        (2, 7, 9, 8))
-                                AS _ (c1, c2, c3, c4)
-                               WHERE c1 IN (?, ?, ?)"
-                   :tgt/query "SELECT * FROM
-                                (VALUES (2, 2, 9, 4),
-                                        (3, 6, 7, 8))
-                                AS _ (c1, c2, c3, c4)
-                               WHERE c1 IN (?, ?, ?)"}
+    (let [config  {:match-by [:c1]
+                   :ponders  {:c2 3 :c3 2}
+                   :workers  2
+                   :src/plan {:conn  (db-spec)
+                              :query "SELECT * FROM
+                                       (VALUES (1, 3, 5, 6),
+                                               (2, 7, 9, 8))
+                                       AS _ (c1, c2, c3, c4)
+                                      WHERE c1 IN (?, ?, ?)"}
+                   :tgt/plan {:conn  (db-spec)
+                              :query "SELECT * FROM
+                                       (VALUES (2, 2, 9, 4),
+                                               (3, 6, 7, 8))
+                                       AS _ (c1, c2, c3, c4)
+                                      WHERE c1 IN (?, ?, ?)"}}
           ch-err  (async/chan)
           ch-ptn  (async/to-chan! [[1 2 3] [4 4 4]])
           ch-diff (io/diff config ch-err ch-ptn)]
@@ -93,17 +90,17 @@
       (async/close! ch-err)
       (is (drained? ch-err))))
   (testing "Error handling"
-    (let [config {:match-by  [:c1]
-                  :ponders   {:c2 3 :c3 2}
-                  :workers   1
-                  :src/con   (assoc (db-spec) :dbtype "oracle")
-                  :tgt/con   (db-spec)
-                  :src/query "SELECT * FROM
-                               (VALUES (1)) AS _ (c1)
-                               WHERE c1 IN (?)"
-                  :tgt/query "SELECT * FROM
-                               (VALUES (2)) AS _ (c1)
-                               WHERE c1 IN (?)"}
+    (let [config {:match-by [:c1]
+                  :ponders  {:c2 3 :c3 2}
+                  :workers  1
+                  :src/plan {:conn  (assoc (db-spec) :dbtype "oracle")
+                             :query "SELECT * FROM
+                                      (VALUES (1)) AS _ (c1)
+                                     WHERE c1 IN (?)"}
+                  :tgt/plan {:conn  (db-spec)
+                             :query "SELECT * FROM
+                                      (VALUES (2)) AS _ (c1)
+                                     WHERE c1 IN (?)"}}
           ch-err (async/chan)
           ch-ptn (async/to-chan! [[1]])]
       (is (thrown-uncaught?
@@ -113,17 +110,17 @@
       (is (drained? ch-err))
       (is (= (async/<!! (async/into [] ch-ptn)) [[1]]))))
   (testing "Recoverable error handling"
-    (let [config  {:match-by  [:c1]
-                   :ponders   {:c2 3 :c3 2}
-                   :workers   2
-                   :src/con   (db-spec)
-                   :tgt/con   (db-spec)
-                   :src/query "SELECT * FROM
-                               (VALUES (1)) AS _ (c1)
-                               WHERE c1 IN (?)"
-                   :tgt/query "SELECT * FROM_ERR
-                               (VALUES (2)) AS _ (c1)
-                               WHERE c1 IN (?)"}
+    (let [config  {:match-by [:c1]
+                   :ponders  {:c2 3 :c3 2}
+                   :workers  2
+                   :src/plan {:conn  (db-spec)
+                              :query "SELECT * FROM
+                                       (VALUES (1)) AS _ (c1)
+                                      WHERE c1 IN (?)"}
+                   :tgt/plan {:conn (db-spec)
+                              :query "SELECT * FROM_ERR
+                                       (VALUES (2)) AS _ (c1)
+                                      WHERE c1 IN (?)"}}
           ch-err  (async/chan)
           ch-ptn  (async/to-chan! [[1]])
           ch-diff (io/diff config ch-err ch-ptn)]

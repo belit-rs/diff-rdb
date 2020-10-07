@@ -128,13 +128,13 @@
   results using vector and puts pairs to the ch-out channel.
   Function loops until either ch-ptn or ch-out is closed or if
   exception is thrown (failed ptn is captured in the ex-data)."
-  [config ch-ptn ch-out]
-  (let [con-src (:src/con config)
-        con-tgt (:tgt/con config)
-        opt-src (:src/opts config {})
-        opt-tgt (:tgt/opts config {})
-        qry-src [(:src/query config)]
-        qry-tgt [(:tgt/query config)]]
+  [plan-src plan-tgt ch-ptn ch-out]
+  (let [con-src (:conn plan-src)
+        con-tgt (:conn plan-tgt)
+        opt-src (:opts plan-src {})
+        opt-tgt (:opts plan-tgt {})
+        qry-src [(:query plan-src)]
+        qry-tgt [(:query plan-tgt)]]
     (fn parallel-select []
       (with-open [con-src (jdbc/get-connection con-src opt-src)
                   con-tgt (jdbc/get-connection con-tgt opt-tgt)

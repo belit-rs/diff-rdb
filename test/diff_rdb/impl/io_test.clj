@@ -226,10 +226,10 @@
           ch-out (async/chan)
           select (future
                    ((impl/parallel-select-fn
-                     {:src/con (db-spec)
-                      :tgt/con (db-spec)
-                      :src/query "SELECT * FROM (VALUES (1)) AS _"
-                      :tgt/query "SELECT * FROM (VALUES (2)) AS _"}
+                     {:conn  (db-spec)
+                      :query "SELECT * FROM (VALUES (1)) AS _"}
+                     {:conn  (db-spec)
+                      :query "SELECT * FROM (VALUES (2)) AS _"}
                      ch-ptn ch-out)))]
       (is (= (async/<!! ch-out) [[{:column1 1}] [{:column1 2}]]))
       (is (nil? @select))
@@ -239,18 +239,18 @@
           ch-out (async/chan)
           select (future
                    ((impl/parallel-select-fn
-                     {:src/con (db-spec)
-                      :tgt/con (db-spec)
-                      :src/query "SELECT column3
-                                    FROM (VALUES (1, 2, 3),
-                                                 (2, 3, 4),
-                                                 (3, 4, 5)) AS _
-                                   WHERE column1 = ?"
-                      :tgt/query "SELECT column3
-                                    FROM (VALUES (1, 2, 3),
-                                                 (2, 3, 4),
-                                                 (3, 4, 5)) AS _
-                                   WHERE column1 = ?"}
+                     {:conn  (db-spec)
+                      :query "SELECT column3
+                                FROM (VALUES (1, 2, 3),
+                                             (2, 3, 4),
+                                             (3, 4, 5)) AS _
+                               WHERE column1 = ?"}
+                     {:conn  (db-spec)
+                      :query "SELECT column3
+                                FROM (VALUES (1, 2, 3),
+                                             (2, 3, 4),
+                                             (3, 4, 5)) AS _
+                               WHERE column1 = ?"}
                      ch-ptn ch-out)))]
       (is (= (async/<!! ch-out) [[{:column3 3}] [{:column3 3}]]))
       (is (= (async/<!! ch-out) [[{:column3 4}] [{:column3 4}]]))
@@ -262,19 +262,19 @@
           ch-out (async/chan)
           select (future
                    ((impl/parallel-select-fn
-                     {:src/con (db-spec)
-                      :tgt/con (db-spec)
-                      :src/query "SELECT column3
-                                    FROM (VALUES (1, 2, 3),
-                                                 (2, 3, 4),
-                                                 (3, 4, 5)) AS _
-                                   WHERE column1 = ?"
-                      :tgt/query "SELECT column3
-                                    FROM (VALUES (1, 2, 3),
-                                                 (2, 3, 4),
-                                                 (3, 4, 5)) AS _
-                                   WHERE column1 = ?"
-                      :src/opts {:builder-fn rs/as-arrays}}
+                     {:conn  (db-spec)
+                      :query "SELECT column3
+                                FROM (VALUES (1, 2, 3),
+                                             (2, 3, 4),
+                                             (3, 4, 5)) AS _
+                               WHERE column1 = ?"
+                      :opts  {:builder-fn rs/as-arrays}}
+                     {:conn  (db-spec)
+                      :query "SELECT column3
+                                FROM (VALUES (1, 2, 3),
+                                             (2, 3, 4),
+                                             (3, 4, 5)) AS _
+                               WHERE column1 = ?"}
                      ch-ptn ch-out)))]
       (is (= (async/<!! ch-out) [[[:column3] [3]] [{:column3 3}]]))
       (is (= (async/<!! ch-out) [[[:column3] [4]] [{:column3 4}]]))
@@ -285,18 +285,18 @@
     (let [ch-ptn (async/to-chan! [[1]])
           ch-out (async/chan)]
       (try ((impl/parallel-select-fn
-             {:src/con (db-spec)
-              :tgt/con (db-spec)
-              :src/query "SELECT column3
-                            FROM (VALUES (1, 2, 3),
-                                         (2, 3, 4),
-                                         (3, 4, 5)) AS _
-                           WHERE column1 = ?"
-              :tgt/query "SELECT_ERR column3
-                            FROM (VALUES (1, 2, 3),
-                                         (2, 3, 4),
-                                         (3, 4, 5)) AS _
-                           WHERE column1 = ?"}
+             {:conn  (db-spec)
+              :query "SELECT column3
+                        FROM (VALUES (1, 2, 3),
+                                     (2, 3, 4),
+                                     (3, 4, 5)) AS _
+                       WHERE column1 = ?"}
+             {:conn  (db-spec)
+              :query "SELECT_ERR column3
+                        FROM (VALUES (1, 2, 3),
+                                     (2, 3, 4),
+                                     (3, 4, 5)) AS _
+                       WHERE column1 = ?"}
              ch-ptn ch-out))
            (catch ExceptionInfo ex
              (let [err (ex-data ex)]
@@ -310,18 +310,18 @@
           ch-out (async/chan)
           select (future
                    ((impl/parallel-select-fn
-                     {:src/con (db-spec)
-                      :tgt/con (db-spec)
-                      :src/query "SELECT column3
-                                    FROM (VALUES (1, 2, 3),
-                                                 (2, 3, 4),
-                                                 (3, 4, 5)) AS _
-                                   WHERE column1 = ?"
-                      :tgt/query "SELECT column3
-                                    FROM (VALUES (1, 2, 3),
-                                                 (2, 3, 4),
-                                                 (3, 4, 5)) AS _
-                                   WHERE column1 = ?"}
+                     {:conn  (db-spec)
+                      :query "SELECT column3
+                                FROM (VALUES (1, 2, 3),
+                                             (2, 3, 4),
+                                             (3, 4, 5)) AS _
+                               WHERE column1 = ?"}
+                     {:conn  (db-spec)
+                      :query "SELECT column3
+                                FROM (VALUES (1, 2, 3),
+                                             (2, 3, 4),
+                                             (3, 4, 5)) AS _
+                               WHERE column1 = ?"}
                      ch-ptn ch-out)))]
       (is (= (async/<!! ch-out) [[{:column3 3}] [{:column3 3}]]))
       (async/close! ch-out)
