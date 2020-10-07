@@ -32,6 +32,7 @@
                  ;; test api
                  diff-rdb.diff-test
                  diff-rdb.io-test
+                 diff-rdb.doc.api-test
                  ;; dev util
                  diff-rdb.dev]]
       (in-ns ns)
