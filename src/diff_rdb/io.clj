@@ -39,7 +39,6 @@
   ch-err along with failed partitions.
 
   Entries of the config map:
-
     [REQUIRED]
   * :workers  - Number of concurrent processes that will take
                 ptns and select data (src and tgt queries are
@@ -52,7 +51,6 @@
                 * :query - SQL query for data to be diff'd.
                 And OPTIONAL entries:
                 * :opts  - Map with all jdbc options.
-
     [OPTIONAL]
   * :ponders - See `diff-rdb.diff/diff`."
   [config ch-err ch-ptn]
