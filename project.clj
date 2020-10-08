@@ -11,5 +11,6 @@
   :profiles {:dev
              {:dependencies [[org.clojure/test.check "1.1.0"]
                              [expound "0.8.5"]
+                             [orchestra "2020.07.12-1"]
                              [org.postgresql/postgresql "42.2.14"]]
               :jvm-opts ["-Dclojure.core.async.go-checking=true"]}})

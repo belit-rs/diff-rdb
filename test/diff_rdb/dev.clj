@@ -6,7 +6,7 @@
    [clojure.string :as str]
    [clojure.java.io :as io]
    [clojure.spec.alpha :as s]
-   [clojure.spec.test.alpha :as st]
+   [orchestra.spec.test :as st]
    [clojure.core.async :as async]
    [expound.alpha :as expound]
    [next.jdbc.specs]
