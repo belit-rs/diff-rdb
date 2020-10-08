@@ -6,8 +6,8 @@
    [clojure.string :as str]
    [clojure.spec.alpha :as s]
    [next.jdbc.specs :as jdbc]
-   [diff-rdb.diff]
-   [diff-rdb.io]
+   [diff-rdb.diff :as diff]
+   [diff-rdb.io :as io]
    [clojure.core.async.impl.channels])
   (:import (clojure.core.async.impl.protocols Channel Buffer)))
 
@@ -20,134 +20,135 @@
          (complement str/blank?)))
 
 
-(s/def :async/chan #(instance? Channel %))
-(s/def :async/buf  #(instance? Buffer  %))
+(s/def ::mapified-throwable
+  (s/map-of any? any?
+            :min-count 1))
 
 
-(s/def :db/col  keyword?)
-(s/def :db/cols (s/coll-of :db/col
-                           :min-count 1
-                           :kind sequential?))
+(s/def ::chan #(instance? Channel %))
+(s/def ::buf  #(instance? Buffer  %))
 
 
-(s/def :db/row  (s/map-of :db/col any?))
-(s/def :db/rows (s/coll-of :db/row
-                           :kind sequential?))
+(s/def ::col  keyword?)
+(s/def ::cols (s/coll-of ::col
+                         :min-count 1
+                         :kind sequential?))
 
 
-(s/def :db/val  any?)
-(s/def :db/vals (s/coll-of :db/val
-                           :kind sequential?))
+(s/def ::row  (s/map-of ::col any?))
+(s/def ::rows (s/coll-of ::row
+                         :kind sequential?))
 
 
-(s/def :db/conn  ::jdbc/connectable)
-(s/def :db/query ::not-blank-string)
-(s/def :db/opts  ::jdbc/opts-map)
-(s/def :db/plan  (s/keys :req-un [:db/conn
-                                  :db/query]
-                         :opt-un [:db/opts]))
+(s/def ::val  any?)
+(s/def ::vals (s/coll-of ::val
+                         :kind sequential?))
+
+
+(s/def ::match-by ::cols)
+(s/def ::ponders  (s/map-of ::col number?))
+
+
+(s/def ::conn  ::jdbc/connectable)
+(s/def ::query ::not-blank-string)
+(s/def ::opts  ::jdbc/opts-map)
+(s/def ::plan  (s/keys :req-un [::conn
+                                ::query]
+                       :opt-un [::opts]))
+
+
+(s/def ::workers (s/and nat-int? pos?))
 
 
 ;; ==============================
 
 
-(s/def :diff/match-by :db/cols)
-(s/def :diff/ponders  (s/map-of :db/col number?))
-(s/def :diff/config   (s/keys :req-un [:diff/match-by]
-                              :opt-un [:diff/ponders]))
+(s/def ::diff/config
+  (s/keys :req-un [::match-by]
+          :opt-un [::ponders]))
 
 
-(s/def :diff.upd/src  :db/row)
-(s/def :diff.upd/tgt  :db/row)
-(s/def :diff.upd/cols :db/cols)
+(s/def ::diff/src  ::row)
+(s/def ::diff/tgt  ::row)
+(s/def ::diff/cols ::cols)
 
 
-(s/def :diff/ins :db/rows)
-(s/def :diff/del :db/rows)
-(s/def :diff/upd (s/coll-of
-                  (s/keys :req-un [:diff.upd/src
-                                   :diff.upd/tgt
-                                   :diff.upd/cols])))
+(s/def ::diff/ins ::rows)
+(s/def ::diff/del ::rows)
+(s/def ::diff/upd (s/coll-of
+                   (s/keys :req-un [::diff/src
+                                    ::diff/tgt
+                                    ::diff/cols])))
 
 
 (s/fdef diff-rdb.diff/diff
-  :args (s/alt :transducer :diff/config
-               :transduced (s/cat :config :diff/config
-                                  :src    :db/rows
-                                  :tgt    :db/rows))
+  :args (s/alt :transducer ::diff/config
+               :transduced (s/cat :config ::diff/config
+                                  :src    ::rows
+                                  :tgt    ::rows))
   :ret  (s/or  :transducer fn?
-               :transduced (s/keys :opt-un [:diff/ins
-                                            :diff/del
-                                            :diff/upd])))
+               :transduced (s/keys :opt-un [::diff/ins
+                                            ::diff/del
+                                            ::diff/upd])))
 
 
 ;; ==============================
 
 
 (s/def :ptn/size (s/and nat-int? pos?))
-(s/def :ptn/plan :db/plan)
+(s/def :ptn/plan ::plan)
 
 
 (s/fdef diff-rdb.io/ptn
   :args (s/cat :config (s/keys :req [:ptn/size
                                      :ptn/plan]))
-  :ret  :async/chan)
+  :ret  ::chan)
 
 
 ;; ==============================
 
 
-(s/def :diff/workers (s/and nat-int? pos?))
-(s/def :src/plan     :db/plan)
-(s/def :tgt/plan     :db/plan)
+(s/def :src/plan ::plan)
+(s/def :tgt/plan ::plan)
 
 
 (s/fdef diff-rdb.io/diff
-  :args (s/cat :config (s/keys :req-un [:diff/workers
-                                        :diff/match-by]
-                               :opt-un [:diff/ponders]
+  :args (s/cat :config (s/keys :req-un [::workers
+                                        ::match-by]
+                               :opt-un [::ponders]
                                :req    [:src/plan
                                         :tgt/plan])
-               :ch-err :async/chan
-               :ch-ptn :async/chan)
-  :ret  :async/chan)
+               :ch-err ::chan
+               :ch-ptn ::chan)
+  :ret  ::chan)
 
 
 ;; ==============================
 
 
-(s/def :split/ins :async/chan)
-(s/def :split/del :async/chan)
-(s/def :split/upd :async/chan)
+(s/def ::io/ins ::chan)
+(s/def ::io/del ::chan)
+(s/def ::io/upd ::chan)
 
 
 (s/fdef diff-rdb.io/split-by-diff
-  :args (s/cat :sub-buf (s/or :buf :async/buf
+  :args (s/cat :sub-buf (s/or :buf ::buf
                               :int (s/and nat-int? pos?))
-               :ch-diff :async/chan)
-  :ret  (s/keys :req-un [:split/ins
-                         :split/del
-                         :split/upd]))
+               :ch-diff ::chan)
+  :ret  (s/keys :req-un [::io/ins
+                         ::io/del
+                         ::io/upd]))
 
 
 ;; ==============================
 
 
-(s/def :mapified/throwable map?)
-
-
-(s/def :err.ptn/err #{:ptn})
-(s/def :err.ptn/ex  :mapified/throwable)
-(s/def :err/ptn     (s/keys :req-un [:err.ptn/err
-                                     :err.ptn/ex]))
-
-
-(s/def :err.diff/err #{:parallel-select})
-(s/def :err.diff/ptn :db/vals)
-(s/def :err.diff/ex  :mapified/throwable)
-(s/def :err/diff     (s/keys :req-un [:err.diff/err
-                                      :err.diff/ptn
-                                      :err.diff/ex]))
+(s/def ::err     keyword?)
+(s/def ::ex      ::mapified-throwable)
+(s/def ::ptn     ::vals)
+(s/def ::ex-data (s/keys :req-un [::err
+                                  ::ex]
+                         :opt-un [::ptn]))
 
 
 ;; ==============================
