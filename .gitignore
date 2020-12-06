@@ -1,4 +1,4 @@
 /target
 /.nrepl-port
-pom.xml
-pom.xml.asc
+/pom.xml
+/pom.xml.asc
