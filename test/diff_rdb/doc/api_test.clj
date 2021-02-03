@@ -1,3 +1,6 @@
+;; Copyright (c) Belit d.o.o.
+
+
 (ns diff-rdb.doc.api-test
   (:require [clojure.test :refer :all]))
 
