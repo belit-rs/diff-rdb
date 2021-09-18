@@ -5,12 +5,12 @@
   :description "Tools and APIs for finding, inspecting and fixing differences between data sets in relational databases."
   :url "https://github.com/belit-rs/diff-rdb"
   :license {:url "https://github.com/belit-rs/diff-rdb/blob/master/LICENSE"}
-  :dependencies [[org.clojure/clojure "1.10.1"]
-                 [org.clojure/core.async "1.3.610"]
-                 [seancorfield/next.jdbc "1.1.582"]]
+  :dependencies [[org.clojure/clojure "1.10.3"]
+                 [org.clojure/core.async "1.3.622"]
+                 [seancorfield/next.jdbc "1.2.659"]]
   :profiles {:dev
              {:dependencies [[org.clojure/test.check "1.1.0"]
-                             [expound "0.8.5"]
-                             [orchestra "2020.07.12-1"]
-                             [org.postgresql/postgresql "42.2.14"]]
+                             [expound "0.8.10"]
+                             [orchestra "2021.01.01-1"]
+                             [org.postgresql/postgresql "42.2.23"]]
               :jvm-opts ["-Dclojure.core.async.go-checking=true"]}})
