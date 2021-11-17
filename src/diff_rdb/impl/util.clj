@@ -23,10 +23,9 @@
   "Returns a transducer that transforms incoming
   collections of any size to vectors of size n."
   [n]
-  (comp
-   (mapcat vec)
-   (partition-all n)
-   (map #(equalize-ptn n %))))
+  (comp cat
+        (partition-all n)
+        (map #(equalize-ptn n %))))
 
 
 (defn expand-?s
