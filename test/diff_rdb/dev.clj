@@ -15,31 +15,6 @@
   (:import (java.util UUID)))
 
 
-(do (set! s/*explain-out* expound/printer)
-    (s/check-asserts true)
-    (st/instrument)
-    (doseq [ns '[;; impl
-                 diff-rdb.impl.diff
-                 diff-rdb.impl.io
-                 diff-rdb.impl.util
-                 ;; api
-                 diff-rdb.diff
-                 diff-rdb.io
-                 diff-rdb.spec
-                 ;; test impl
-                 diff-rdb.impl.diff-test
-                 diff-rdb.impl.io-test
-                 diff-rdb.impl.util-test
-                 ;; test api
-                 diff-rdb.diff-test
-                 diff-rdb.io-test
-                 diff-rdb.doc.api-test
-                 ;; dev util
-                 diff-rdb.dev]]
-      (in-ns ns)
-      (set! *warn-on-reflection* true)))
-
-
 (defn is*
   [results]
   (assert (seq results))
@@ -97,3 +72,36 @@
   [chan]
   (and (nil? (async/<!! chan))
        (not  (async/>!! chan ::check))))
+
+
+(do (set! s/*explain-out* expound/printer)
+    (s/check-asserts true)
+    (st/instrument)
+    (doseq [ns '[;; impl
+                 diff-rdb.impl.diff
+                 diff-rdb.impl.io
+                 diff-rdb.impl.util
+                 ;; api
+                 diff-rdb.diff
+                 diff-rdb.io
+                 diff-rdb.spec
+                 ;; test impl
+                 diff-rdb.impl.diff-test
+                 diff-rdb.impl.io-test
+                 diff-rdb.impl.util-test
+                 ;; test api
+                 diff-rdb.diff-test
+                 diff-rdb.io-test
+                 diff-rdb.doc.api-test
+                 ;; dev util
+                 diff-rdb.dev]]
+      (require ns)
+      (in-ns ns)
+      (set! *warn-on-reflection* true)))
+
+
+(comment
+
+  (clojure.test/run-all-tests #"diff-rdb.*.-test")
+
+  ,)
