@@ -3,7 +3,7 @@
 
 (ns diff-rdb.impl.util-test
   (:require
-   [clojure.test :refer :all]
+   [clojure.test :refer [deftest testing is are]]
    [diff-rdb.impl.util :as impl]))
 
 

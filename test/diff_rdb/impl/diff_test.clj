@@ -3,8 +3,10 @@
 
 (ns diff-rdb.impl.diff-test
   (:require
-   [clojure.test :refer :all]
-   [diff-rdb.impl.diff :as impl]))
+   [clojure.test :refer [deftest is are]]
+   [diff-rdb.impl.diff :as impl]
+   [clojure.set]
+   [clojure.walk]))
 
 
 (deftest pair-groups-test

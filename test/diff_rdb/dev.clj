@@ -9,6 +9,7 @@
    [orchestra.spec.test :as st]
    [clojure.core.async :as async]
    [expound.alpha :as expound]
+   [clojure.test]
    [next.jdbc.specs]
    [diff-rdb.spec])
   (:import (java.util UUID)))

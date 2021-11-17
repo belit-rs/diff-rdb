@@ -1,0 +1,1 @@
+{:lint-as {diff-rdb.dev/with-file clojure.core/with-open}}

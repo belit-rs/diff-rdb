@@ -3,7 +3,7 @@
 
 (ns diff-rdb.io-test
   (:require
-   [clojure.test :refer :all]
+   [clojure.test :refer [deftest testing is]]
    [clojure.core.async :as async]
    [diff-rdb.io :as io]
    [diff-rdb.impl.io :as impl]

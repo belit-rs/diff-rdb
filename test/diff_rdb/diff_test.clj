@@ -3,9 +3,11 @@
 
 (ns diff-rdb.diff-test
   (:require
-   [clojure.test :refer :all]
+   [clojure.test :refer [deftest testing is are]]
    [clojure.spec.test.alpha :as st]
-   [diff-rdb.diff :refer [diff]])
+   [diff-rdb.diff :refer [diff]]
+   [clojure.set]
+   [clojure.walk])
   (:import
    (clojure.lang ArityException)
    (clojure.lang PersistentVector)))

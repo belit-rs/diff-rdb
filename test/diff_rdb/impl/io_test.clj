@@ -3,7 +3,7 @@
 
 (ns diff-rdb.impl.io-test
   (:require
-   [clojure.test :refer :all]
+   [clojure.test :refer [deftest testing is are]]
    [clojure.string :as str]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
@@ -84,7 +84,7 @@
             (impl/reducible-lines f))))))
   (testing "Resource management"
     (let [f (create-file)
-          r (impl/reducible-lines f)]
+          _ (impl/reducible-lines f)]
       (is (io/delete-file f)))
     (let [f (create-file)
           r (impl/reducible-lines f)

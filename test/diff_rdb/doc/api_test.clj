@@ -2,7 +2,7 @@
 
 
 (ns diff-rdb.doc.api-test
-  (:require [clojure.test :refer :all]))
+  (:require [clojure.test :refer [deftest is]]))
 
 
 (def src
