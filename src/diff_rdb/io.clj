@@ -14,7 +14,7 @@
 (defn ptn
   "Given a config map, returns a channel that yields
   partitions and closes when all partitions are loaded
-  or if an exception occured.
+  or if exception is thrown.
 
   REQUIRED entries of the config map:
   * :ptn/size - Number of elements in each partition.
@@ -35,8 +35,8 @@
   yields partitions, returns a channel that yields differences
   between src (source) and tgt (target) data sets selected for
   each partition. Returned channel will close after ch-ptn is
-  closed and drained. Exceptions are mapified and placed onto
-  ch-err along with failed partitions.
+  closed and drained. Exceptions are mapified and put on ch-err
+  along with failed partitions.
 
   Entries of the config map:
     [REQUIRED]
@@ -88,9 +88,8 @@
   Each channel will have sub-buf buffer and each will
   close after the ch-diff is closed and drained."
   [sub-buf ch-diff]
-  (let [xf-seq (mapcat seq)
-        ch-seq (async/chan sub-buf xf-seq)
-        ch-pub (async/pub ch-seq first)
+  (let [ch-cat (async/chan sub-buf cat)
+        ch-pub (async/pub ch-cat first)
         xf-sub (mapcat second)
         ch-ins (async/chan sub-buf xf-sub)
         ch-del (async/chan sub-buf xf-sub)
@@ -98,5 +97,5 @@
     (async/sub ch-pub :ins ch-ins)
     (async/sub ch-pub :del ch-del)
     (async/sub ch-pub :upd ch-upd)
-    (async/pipe ch-diff ch-seq)
+    (async/pipe ch-diff ch-cat)
     {:ins ch-ins :del ch-del :upd ch-upd}))
