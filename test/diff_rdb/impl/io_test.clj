@@ -120,7 +120,7 @@
     (is (drained? c)))
   (let [p (promise)
         c (impl/sink-chan 2 #(deliver p true))]
-    (is (async/>!! c false))
+    (is (async/>!! c 1))
     (is (async/>!! c 2))
     (is (deref p 50 false))
     (is (drained? c)))

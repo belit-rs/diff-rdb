@@ -44,7 +44,7 @@
   "Creates and returns a channel with the contents of
   reducible, transformed using the xform transducer.
   Channel closes when reducible is fully reduced or if
-  an exception is thrown (will be re-thrown as ex-info)."
+  exception is thrown (will be re-thrown as ex-info)."
   [xform reducible]
   (let [chan (async/chan)]
     (async/thread
@@ -68,7 +68,7 @@
 (defn sink-chan
   "Returns a channel that closes after n puts.
   On-close is a zero arity function.
-  This channel should be write-only."
+  This channel should be put-only."
   [n on-close]
   (let [chan (async/chan)]
     (async/go-loop [n n]
@@ -112,8 +112,8 @@
 (defn async-select
   "Executes the pst PreparedStatement with the ptn parameters
   in another thread. Returns a channel which will receive the
-  result of the execution when completed, then close.
-  Exception, if thrown, is placed on the returned channel."
+  result of the execution, when completed, then close.
+  Exception, if thrown, is put on the returned channel."
   [pst ptn opts]
   (-> (prep/set-parameters pst ptn)
       (jdbc/execute! nil opts)
@@ -159,9 +159,9 @@
 
 (defn drain-to-file
   "Writes values taken from a chan to a file at a given path.
-  Each value is transformed to a string via stringifier fn
-  and written as a separate line. Creates all missing parent
-  directories of the file. Exceptions are re-thrown as ex-info."
+  Each value is transformed to string via stringifier fn and
+  written as a separate line. Creates all missing parent dirs
+  of the file. Exceptions are re-thrown as ex-info."
   [file stringifier chan]
   (io/make-parents file)
   (async/thread
