@@ -12,7 +12,7 @@
     (fn [ret k]
       (conj! ret [(get g1 k) (get g2 k)]))
     (transient [])
-    (set (into (keys g1) (keys g2))))))
+    (into (set (keys g1)) (keys g2)))))
 
 
 (defn distinct-by
