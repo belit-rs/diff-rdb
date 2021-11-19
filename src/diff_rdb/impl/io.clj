@@ -174,7 +174,8 @@
             (.newLine w)
             (recur))))
       (catch Throwable ex
-        (->> {:err ::drain-to-file
-              :ex  (Throwable->map ex)}
+        (->> {:err  ::drain-to-file
+              :file (io/file file)
+              :ex   (Throwable->map ex)}
              (ex-info "drain-to-file failed")
              throw)))))
