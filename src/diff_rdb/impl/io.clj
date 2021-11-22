@@ -40,6 +40,24 @@
               state)))))))
 
 
+(defn uncaught-ex-chan
+  "Returns a channel with exceptions caught by the default
+  uncaught exception handler. When this channel is closed,
+  next uncaught exception will cause default handler's
+  behaviour to be restored, i.e. it will be set to nil."
+  []
+  (let [chan (async/chan)]
+    (Thread/setDefaultUncaughtExceptionHandler
+     (reify Thread$UncaughtExceptionHandler
+       (uncaughtException [_ _ ex]
+         (when-not (async/put! chan ex)
+           (Thread/setDefaultUncaughtExceptionHandler nil)
+           (let [thread (Thread/currentThread)]
+             (-> (.getUncaughtExceptionHandler thread)
+                 (.uncaughtException thread ex)))))))
+    chan))
+
+
 (defn reducible->chan
   "Creates and returns a channel with the contents of
   reducible, transformed using the xform transducer.

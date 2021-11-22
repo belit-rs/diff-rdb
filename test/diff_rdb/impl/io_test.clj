@@ -11,7 +11,8 @@
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as rs]
    [diff-rdb.impl.io :as impl]
-   [diff-rdb.dev :refer [with-file
+   [diff-rdb.dev :refer [with-err-str
+                         with-file
                          thrown-uncaught?
                          create-file
                          drained?
@@ -44,6 +45,26 @@
        (into []
              (map str/upper-case)
              (impl/reducible-lines nil)))))
+
+
+(deftest uncaught-ex-chan-test
+  (try
+    (let [chan   (async/chan 1 (map #(/ 1 %)))
+          ch-err (impl/uncaught-ex-chan)]
+      (async/>!! chan 0)
+      (async/>!! chan 0)
+      (is (= (type (async/<!! ch-err)) ArithmeticException))
+      (is (= (type (async/<!! ch-err)) ArithmeticException))
+      (async/>!! chan 0)
+      (async/close! ch-err)
+      (is (= (type (async/<!! ch-err)) ArithmeticException))
+      (is (drained? ch-err))
+      (is (-> (with-err-str (async/>!! chan 0))
+              (str/includes? "ArithmeticException")))
+      (async/close! chan)
+      (is (drained? chan)))
+    (finally
+      (Thread/setDefaultUncaughtExceptionHandler nil))))
 
 
 (deftest reducible->chan-test

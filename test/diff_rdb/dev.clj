@@ -24,6 +24,14 @@
      true)))
 
 
+(defmacro with-err-str
+  [& body]
+  `(let [s# (new java.io.StringWriter)]
+     (binding [*err* s#]
+       ~@body
+       (str s#))))
+
+
 (defmacro with-file
   [bindings & body]
   (assert (= (count bindings) 2))
