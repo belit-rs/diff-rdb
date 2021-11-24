@@ -15,7 +15,7 @@
 
 (defn <??
   "Variation of the `clojure.core.async/<!!` that throws
-  an exception if val taken from the chan is Throwable."
+  an exception if val taken from the channel is Throwable."
   [chan]
   (let [v (async/<!! chan)]
     (if (instance? Throwable v)
@@ -128,10 +128,10 @@
 
 
 (defn async-select
-  "Executes the pst PreparedStatement with the ptn parameters
-  in another thread. Returns a channel which will receive the
-  result of the execution, when completed, then close.
-  Exception, if thrown, is put on the returned channel."
+  "Executes pst PreparedStatement with ptn parameters in another
+  thread. Returns a channel which will receive the result of the
+  execution, when completed, then close. Exception, if thrown,
+  is put on the returned channel."
   [pst ptn opts]
   (-> (prep/set-parameters pst ptn)
       (jdbc/execute! nil opts)
@@ -176,10 +176,10 @@
 
 
 (defn drain-to-file
-  "Writes values taken from a chan to a file at a given path.
-  Each value is transformed to string via stringifier fn and
-  written as a separate line. Creates all missing parent dirs
-  of the file. Exceptions are re-thrown as ex-info."
+  "Writes values taken from a channel to a file. Each value is
+  transformed to string via stringifier fn and written as a
+  separate line. Creates all missing parent dirs of the file.
+  Exceptions are re-thrown as ex-info."
   [file stringifier chan]
   (io/make-parents file)
   (async/thread
