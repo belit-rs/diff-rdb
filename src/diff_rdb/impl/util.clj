@@ -35,3 +35,12 @@
   (->> (repeat n \?)
        (str/join \,)
        (str/replace query "?s")))
+
+
+(defn thread-handle-uncaught-ex
+  "Calls uncaught exception handler of the current
+  thread with the ex provided."
+  [ex]
+  (let [thread (Thread/currentThread)]
+    (-> (.getUncaughtExceptionHandler thread)
+        (.uncaughtException thread ex))))

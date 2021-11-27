@@ -4,6 +4,8 @@
 (ns diff-rdb.impl.util-test
   (:require
    [clojure.test :refer [deftest testing is are]]
+   [clojure.string :as str]
+   [diff-rdb.dev :refer [with-err-str]]
    [diff-rdb.impl.util :as impl]))
 
 
@@ -76,3 +78,10 @@
            (impl/expand-?s  0 "IN(?s)")
            (impl/expand-?s  3 "IN()")
            "IN()"))))
+
+
+(deftest thread-handle-uncaught-ex-test
+  (let [ex  (try (/ 1 0) (catch Throwable ex ex))
+        err (with-err-str (impl/thread-handle-uncaught-ex ex))]
+    (is (str/includes? err (-> ex class .getName)))
+    (is (str/includes? err (-> (Thread/currentThread) .getName)))))
