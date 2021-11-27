@@ -6,7 +6,8 @@
    [clojure.java.io :as io]
    [clojure.core.async :as async]
    [next.jdbc :as jdbc]
-   [next.jdbc.prepare :as prep])
+   [next.jdbc.prepare :as prep]
+   [diff-rdb.impl.util :as util])
   (:import
    (java.io BufferedReader
             BufferedWriter)
@@ -46,15 +47,13 @@
   next uncaught exception will cause default handler's
   behaviour to be restored, i.e. it will be set to nil."
   []
-  (let [chan (async/chan)]
+  (let [chan (async/chan 1024)]
     (Thread/setDefaultUncaughtExceptionHandler
      (reify Thread$UncaughtExceptionHandler
        (uncaughtException [_ _ ex]
-         (when-not (async/put! chan ex)
+         (when-not (async/>!! chan ex)
            (Thread/setDefaultUncaughtExceptionHandler nil)
-           (let [thread (Thread/currentThread)]
-             (-> (.getUncaughtExceptionHandler thread)
-                 (.uncaughtException thread ex)))))))
+           (util/thread-handle-uncaught-ex ex)))))
     chan))
 
 
