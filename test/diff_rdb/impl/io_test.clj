@@ -293,11 +293,8 @@
                        WHERE column1 = ?"}
              ch-ptn ch-out))
            (catch ExceptionInfo ex
-             (let [err (ex-data ex)]
-               (is (= (:err err) ::impl/parallel-select))
-               (is (= (:ptn err) [1]))
-               (is (= (-> err :ex :via first :type)
-                      'org.postgresql.util.PSQLException)))))
+             (is (instance? PSQLException (ex-cause ex)))
+             (is (= (ex-data ex) {:ptn [1]}))))
       (async/close! ch-out)))
   (testing "Close ch-out"
     (let [ch-ptn (async/to-chan! [[1] [2] [3]])

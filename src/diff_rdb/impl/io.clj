@@ -141,11 +141,9 @@
                           tgt (<?? tgt)]
                       (async/>!! ch-out [src tgt]))
                     (catch Throwable ex
-                      (->> {:err ::parallel-select
-                            :ptn ptn
-                            :ex  (Throwable->map ex)}
-                           (ex-info "parallel-select failed")
-                           throw)))
+                      (throw (ex-info "parallel-select failed"
+                                      {:ptn ptn}
+                                      ex))))
               (recur))))))))
 
 

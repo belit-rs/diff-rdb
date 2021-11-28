@@ -121,11 +121,9 @@
             ch-err  (impl/uncaught-ex-chan)
             ch-ptn  (async/to-chan! [[1]])
             ch-diff (io/diff config ch-ptn)]
-        (let [err (ex-data (async/<!! ch-err))]
-          (is (= (:err err) ::impl/parallel-select))
-          (is (= (:ptn err) [1]))
-          (is (= (-> err :ex :via first :type)
-                 'org.postgresql.util.PSQLException)))
+        (let [ex (async/<!! ch-err)]
+          (is (instance? PSQLException (ex-cause ex)))
+          (is (= (ex-data ex) {:ptn [1]})))
         (async/close! ch-err)
         (is (drained? ch-err))
         (is (drained? ch-diff)))
