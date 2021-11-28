@@ -51,17 +51,14 @@
                                        (VALUES (2, 2, 9, 4),
                                                (3, 6, 7, 8))
                                        AS _ (c1, c2, c3, c4)"}}
-          ch-err  (async/chan)
           ch-ptn  (async/to-chan! [[]])
-          ch-diff (io/diff config ch-err ch-ptn)]
+          ch-diff (io/diff config ch-ptn)]
       (is (= (async/<!! (async/into #{} ch-diff))
              #{{:ins [{:c1 1 :c2 3 :c3 5 :c4 6}]}
                {:del [{:c1 3 :c2 6 :c3 7 :c4 8}]}
                {:upd [{:src  {:c1 2 :c2 7 :c3 9 :c4 8}
                        :tgt  {:c1 2 :c2 2 :c3 9 :c4 4}
-                       :cols [:c2]}]}}))
-      (async/close! ch-err)
-      (is (drained? ch-err))))
+                       :cols [:c2]}]}}))))
   (testing "With partitioning"
     (let [config  {:match-by [:c1]
                    :ponders  {:c2 3 :c3 2}
@@ -78,60 +75,61 @@
                                                (3, 6, 7, 8))
                                        AS _ (c1, c2, c3, c4)
                                       WHERE c1 IN (?, ?, ?)"}}
-          ch-err  (async/chan)
           ch-ptn  (async/to-chan! [[1 2 3] [4 4 4]])
-          ch-diff (io/diff config ch-err ch-ptn)]
+          ch-diff (io/diff config ch-ptn)]
       (is (= (async/<!! (async/into #{} ch-diff))
              #{{:ins [{:c1 1 :c2 3 :c3 5 :c4 6}]}
                {:del [{:c1 3 :c2 6 :c3 7 :c4 8}]}
                {:upd [{:src  {:c1 2 :c2 7 :c3 9 :c4 8}
                        :tgt  {:c1 2 :c2 2 :c3 9 :c4 4}
-                       :cols [:c2]}]}}))
-      (async/close! ch-err)
-      (is (drained? ch-err))))
-  (testing "Error handling"
-    (let [config {:match-by [:c1]
-                  :ponders  {:c2 3 :c3 2}
-                  :workers  1
-                  :src/plan {:conn  (assoc (db-spec) :dbtype "oracle")
-                             :query "SELECT * FROM
-                                      (VALUES (1)) AS _ (c1)
-                                     WHERE c1 IN (?)"}
-                  :tgt/plan {:conn  (db-spec)
-                             :query "SELECT * FROM
-                                      (VALUES (2)) AS _ (c1)
-                                     WHERE c1 IN (?)"}}
-          ch-err (async/chan)
-          ch-ptn (async/to-chan! [[1]])]
-      (is (thrown-uncaught?
-           ExceptionInfo
-           (io/diff config ch-err ch-ptn)))
-      (async/close! ch-err)
-      (is (drained? ch-err))
-      (is (= (async/<!! (async/into [] ch-ptn)) [[1]]))))
+                       :cols [:c2]}]}}))))
+  (testing "Unrecoverable error handling"
+    (try
+      (let [config {:match-by [:c1]
+                    :ponders  {:c2 3 :c3 2}
+                    :workers  1
+                    :src/plan {:conn  (assoc (db-spec) :dbtype "oracle")
+                               :query "SELECT * FROM
+                                        (VALUES (1)) AS _ (c1)
+                                       WHERE c1 IN (?)"}
+                    :tgt/plan {:conn  (db-spec)
+                               :query "SELECT * FROM
+                                        (VALUES (2)) AS _ (c1)
+                                       WHERE c1 IN (?)"}}
+            ch-err  (impl/uncaught-ex-chan)
+            ch-ptn  (async/to-chan! [[1]])
+            ch-diff (io/diff config ch-ptn)]
+        (is (instance? java.sql.SQLException (async/<!! ch-err)))
+        (async/close! ch-err)
+        (is (drained? ch-err))
+        (is (= (async/<!! (async/into [] ch-ptn)) [[1]]))
+        (is (drained? ch-diff)))
+      (finally (Thread/setDefaultUncaughtExceptionHandler nil))))
   (testing "Recoverable error handling"
-    (let [config  {:match-by [:c1]
-                   :ponders  {:c2 3 :c3 2}
-                   :workers  2
-                   :src/plan {:conn  (db-spec)
-                              :query "SELECT * FROM
-                                       (VALUES (1)) AS _ (c1)
-                                      WHERE c1 IN (?)"}
-                   :tgt/plan {:conn (db-spec)
-                              :query "SELECT * FROM_ERR
-                                       (VALUES (2)) AS _ (c1)
-                                      WHERE c1 IN (?)"}}
-          ch-err  (async/chan)
-          ch-ptn  (async/to-chan! [[1]])
-          ch-diff (io/diff config ch-err ch-ptn)]
-      (let [err (async/<!! ch-err)]
-        (is (= (:err err) ::impl/parallel-select))
-        (is (= (:ptn err) [1]))
-        (is (= (-> err :ex :via first :type)
-               'org.postgresql.util.PSQLException)))
-      (async/close! ch-err)
-      (is (drained? ch-err))
-      (is (drained? ch-diff)))))
+    (try
+      (let [config  {:match-by [:c1]
+                     :ponders  {:c2 3 :c3 2}
+                     :workers  2
+                     :src/plan {:conn  (db-spec)
+                                :query "SELECT * FROM
+                                         (VALUES (1)) AS _ (c1)
+                                        WHERE c1 IN (?)"}
+                     :tgt/plan {:conn (db-spec)
+                                :query "SELECT * FROM_ERR
+                                         (VALUES (2)) AS _ (c1)
+                                        WHERE c1 IN (?)"}}
+            ch-err  (impl/uncaught-ex-chan)
+            ch-ptn  (async/to-chan! [[1]])
+            ch-diff (io/diff config ch-ptn)]
+        (let [err (ex-data (async/<!! ch-err))]
+          (is (= (:err err) ::impl/parallel-select))
+          (is (= (:ptn err) [1]))
+          (is (= (-> err :ex :via first :type)
+                 'org.postgresql.util.PSQLException)))
+        (async/close! ch-err)
+        (is (drained? ch-err))
+        (is (drained? ch-diff)))
+      (finally (Thread/setDefaultUncaughtExceptionHandler nil)))))
 
 
 (deftest split-by-diff-test

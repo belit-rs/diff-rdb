@@ -125,33 +125,6 @@
       (is (io/delete-file f)))))
 
 
-(deftest sink-chan-test
-  (let [p (promise)
-        c (impl/sink-chan -1 #(deliver p true))]
-    (is (drained? c))
-    (is (deref p 50 false)))
-  (let [p (promise)
-        c (impl/sink-chan 0 #(deliver p true))]
-    (is (drained? c))
-    (is (deref p 50 false)))
-  (let [p (promise)
-        c (impl/sink-chan 1 #(deliver p true))]
-    (is (async/>!! c 1))
-    (is (deref p 50 false))
-    (is (drained? c)))
-  (let [p (promise)
-        c (impl/sink-chan 2 #(deliver p true))]
-    (is (async/>!! c 1))
-    (is (async/>!! c 2))
-    (is (deref p 50 false))
-    (is (drained? c)))
-  (let [p (promise)
-        c (impl/sink-chan 2 #(deliver p true))]
-    (async/close! c)
-    (is (deref p 50 false))
-    (is (drained? c))))
-
-
 (deftest run-in-pool-test
   (is (thrown?
        AssertionError
@@ -160,63 +133,63 @@
        AssertionError
        (impl/run-in-pool 0 nil nil nil)))
   (are [args]
-      (let [{:keys [n in out err]} args
-            ch-in  (async/to-chan! in)
-            ch-out (async/chan)
-            ch-err (async/chan)
-            pout   (promise)
-            perr   (promise)]
-        (async/go-loop [vs #{}]
-          (if-some [v (async/<! ch-out)]
-            (recur (conj vs v))
-            (deliver pout vs)))
-        (async/go-loop [vs #{}]
-          (if-some [v (async/<! ch-err)]
-            (recur (conj vs v))
-            (deliver perr vs)))
-        (impl/run-in-pool n
-                          (fn f []
-                            (when-some [v (async/<!! ch-in)]
-                              (async/>!! ch-out (/ 1 v))
-                              (recur)))
-                          (fn ex-handler [ex]
-                            (->> ^Throwable ex
-                                 .getClass
-                                 .getSimpleName
-                                 (async/>!! ch-err)))
-                          (fn on-close []
-                            (async/close! ch-out)
-                            (async/close! ch-err)))
-        (is (= out (deref pout 5000 ::timeout)))
-        (is (= err (deref perr 5000 ::timeout)))
-        (is (drained? ch-in))
-        (is (drained? ch-out))
-        (is (drained? ch-err)))
+      (try
+        (let [{:keys [n in out err]} args
+              ch-in  (async/to-chan! in)
+              ch-out (async/chan)
+              ch-err (impl/uncaught-ex-chan)
+              pout   (promise)
+              perr   (promise)]
+          (async/go-loop [vs #{}]
+            (if-some [v (async/<! ch-out)]
+              (recur (conj vs v))
+              (deliver pout vs)))
+          (async/go-loop [vs {}]
+            (if-some [^Throwable v (async/<! ch-err)]
+              (recur (update vs
+                             (-> v .getClass .getSimpleName)
+                             (fnil inc 0)))
+              (deliver perr vs)))
+          (impl/run-in-pool n
+                            (fn f []
+                              (when-some [v (async/<!! ch-in)]
+                                (async/>!! ch-out (/ 1 v))
+                                (recur)))
+                            (constantly true)
+                            (fn on-close []
+                              (async/close! ch-out)
+                              (async/close! ch-err)))
+          (is (= out (deref pout 5000 ::timeout)))
+          (is (= err (deref perr 5000 ::timeout)))
+          (is (drained? ch-in))
+          (is (drained? ch-out))
+          (is (drained? ch-err)))
+        (finally (Thread/setDefaultUncaughtExceptionHandler nil)))
 
-    {:n 1 :in [] :out #{} :err #{}}
-    {:n 3 :in [] :out #{} :err #{}}
+    {:n 1 :in [] :out #{} :err {}}
+    {:n 3 :in [] :out #{} :err {}}
 
     {:n   1
      :in  [1 2 0 0 3 0 0 0 0 4 "asd"]
      :out #{1/1 1/2 1/3 1/4}
-     :err #{"ArithmeticException"
-            "ClassCastException"}}
+     :err {"ArithmeticException" 6
+           "ClassCastException"  1}}
 
     {:n   3
      :in  [1 2 0 0 3 0 0 0 0 4 "asd"]
      :out #{1/1 1/2 1/3 1/4}
-     :err #{"ArithmeticException"
-            "ClassCastException"}}
+     :err {"ArithmeticException" 6
+           "ClassCastException"  1}}
 
     {:n   1
      :in  (conj (repeat 100 0) 5)
      :out #{1/5}
-     :err #{"ArithmeticException"}}
+     :err {"ArithmeticException" 100}}
 
     {:n   3
      :in  (conj (repeat 9000 0) 5 6)
      :out #{1/5 1/6}
-     :err #{"ArithmeticException"}}))
+     :err {"ArithmeticException" 9000}}))
 
 
 (deftest async-select-test

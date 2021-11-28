@@ -12,9 +12,8 @@
 
 
 (defn ptn
-  "Given a config map, returns a channel that yields
-  partitions and closes when all partitions are loaded
-  or if exception is thrown.
+  "Given a config map, returns a channel that yields partitions and
+  closes when all partitions are loaded or if exception is thrown.
 
   REQUIRED entries of the config map:
   * :ptn/size - Number of elements in each partition.
@@ -31,12 +30,12 @@
 
 
 (defn diff
-  "Given a config map, a channel for errors and a channel that
-  yields partitions, returns a channel that yields differences
-  between src (source) and tgt (target) data sets selected for
-  each partition. Returned channel will close after ch-ptn is
-  closed and drained. Exceptions are mapified and put on ch-err
-  along with failed partitions.
+  "Given a config map and a channel that yields partitions, returns
+  a channel that yields differences between src (source) and tgt
+  (target) data sets selected for each partition. Returned channel
+  closes after ch-ptn is closed and drained or if unrecoverable
+  exception is thrown by each worker thread. Exception is recoverable
+  if it has :ptn (data taken from the ch-ptn) captured in the ex-data.
 
   Entries of the config map:
     [REQUIRED]
@@ -53,7 +52,7 @@
                 * :opts  - Map with all jdbc options.
     [OPTIONAL]
   * :ponders - See `diff-rdb.diff/diff`."
-  [config ch-err ch-ptn]
+  [config ch-ptn]
   (let [wkrs    (:workers config)
         ch-data (async/chan wkrs)
         xf      (core/diff config)
@@ -66,14 +65,8 @@
                        (:src/plan config)
                        (:tgt/plan config)
                        ch-ptn ch-data)
-                      (fn diff-ex-handler [ex]
-                        (let [data (ex-data ex)]
-                          (if (contains? data :ptn)
-                            (async/>!! ch-err data)
-                            (->> {:err ::impl/parallel-select
-                                  :ex  (Throwable->map ex)}
-                                 (ex-info "parallel-select failed")
-                                 throw))))
+                      (fn diff-ex-recoverable? [ex]
+                        (-> ex ex-data :ptn boolean))
                       (fn diff-on-close []
                         (async/close! ch-data)))
     ch-diff))

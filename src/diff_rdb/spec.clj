@@ -118,7 +118,6 @@
                                :opt-un [::ponders]
                                :req    [:src/plan
                                         :tgt/plan])
-               :ch-err ::chan
                :ch-ptn ::chan)
   :ret  ::chan)
 

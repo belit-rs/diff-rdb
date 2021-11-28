@@ -82,48 +82,26 @@
     chan))
 
 
-(defn sink-chan
-  "Returns a channel that closes after n puts.
-  On-close is a zero arity function.
-  This channel should be put-only."
-  [n on-close]
-  (let [chan (async/chan)]
-    (async/go-loop [n n]
-      (if (pos? n)
-        (if-some [_ (async/<! chan)]
-          (recur (dec n))
-          (on-close))
-        (do (async/close! chan)
-            ;; unblock pending
-            (async/poll! chan)
-            (on-close))))
-    chan))
-
-
 (defn run-in-pool
   "Runs a zero arity function f in parallel, on n threads.
-  If f throws, ex-handler will be called with the Throwable
-  as an argument and f will be re-executed. After all n fs
-  have gracefully finished, the pool will be closed and a
-  zero arity function on-close will be called."
-  [n f ex-handler on-close]
+  If f throws a recoverable exception, it will be re-executed.
+  After all threads have finished, the pool will be closed
+  and a zero arity function on-close will be called."
+  [n f ex-recoverable? on-close]
   (assert (pos? n))
-  (let [ch-pool (async/chan)
-        xf      (map (fn pool-f [wkr] (f) wkr))
-        ch-sink (sink-chan
-                 n
-                 (fn pool-on-close []
-                   (async/close! ch-pool)
-                   (on-close)))
-        wkrs    (repeat n ::wkr)]
-    (async/pipeline-blocking
-     n ch-sink xf ch-pool true
-     (fn pool-ex-handler [ex]
-       (ex-handler ex)
-       ;; avoid >!! deadlock
-       (async/put! ch-pool ::wkr)
-       nil))
-    (async/onto-chan! ch-pool wkrs false)))
+  (let [pool (async/pipeline-blocking
+              n
+              (async/chan n)
+              (map (fn pool-f [wkr]
+                     (if ((every-pred some? ex-recoverable?)
+                          (try (f) nil
+                               (catch Throwable ex
+                                 (util/thread-handle-uncaught-ex ex)
+                                 ex)))
+                       (recur wkr)
+                       wkr)))
+              (async/to-chan (repeat n :wkr)))]
+    (async/thread (async/<!! pool) (on-close))))
 
 
 (defn async-select
