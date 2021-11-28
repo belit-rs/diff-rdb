@@ -99,7 +99,7 @@
   (testing "Exception"
     (with-file [f (create-file)]
       (is (thrown-uncaught?
-           ExceptionInfo
+           ArithmeticException
            (impl/reducible->chan
             (map #(/ (count %) 0))
             (impl/reducible-lines f))))))
@@ -360,5 +360,5 @@
                {:foo 2 :bar 2 :baz nil}]
             c (async/to-chan d)]
         (is (thrown-uncaught?
-             ExceptionInfo
+             ClassCastException
              (impl/drain-to-file f inc c)))))))

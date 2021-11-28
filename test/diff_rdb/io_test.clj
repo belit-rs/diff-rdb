@@ -11,7 +11,7 @@
                          drained?
                          db-spec]])
   (:import
-   (clojure.lang ExceptionInfo)))
+   (org.postgresql.util PSQLException)))
 
 
 (deftest ptn-test
@@ -32,7 +32,7 @@
                   :ptn/plan {:conn  (db-spec)
                              :query "SELECT * FROM_ERR"}}]
       (is (thrown-uncaught?
-           ExceptionInfo
+           PSQLException
            (io/ptn config))))))
 
 

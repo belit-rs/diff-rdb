@@ -61,7 +61,7 @@
   "Creates and returns a channel with the contents of
   reducible, transformed using the xform transducer.
   Channel closes when reducible is fully reduced or if
-  exception is thrown (will be re-thrown as ex-info)."
+  exception is thrown."
   [xform reducible]
   (let [chan (async/chan)]
     (async/thread
@@ -75,10 +75,7 @@
          nil reducible)
         (catch Throwable ex
           (async/close! chan)
-          (->> {:err ::reducible->chan
-                :ex  (Throwable->map ex)}
-               (ex-info "reducible->chan failed")
-               throw))))
+          (throw ex))))
     chan))
 
 
@@ -155,22 +152,14 @@
 (defn drain-to-file
   "Writes values taken from a channel to a file. Each value is
   transformed to string via stringifier fn and written as a
-  separate line. Creates all missing parent dirs of the file.
-  Exceptions are re-thrown as ex-info."
+  separate line. Creates all missing parent dirs of the file."
   [file stringifier chan]
   (io/make-parents file)
   (async/thread
-    (try
-      (with-open [^BufferedWriter w
-                  (io/writer file)]
-        (loop []
-          (when-some [v (async/<!! chan)]
-            (.write w ^String (stringifier v))
-            (.newLine w)
-            (recur))))
-      (catch Throwable ex
-        (->> {:err  ::drain-to-file
-              :file (io/file file)
-              :ex   (Throwable->map ex)}
-             (ex-info "drain-to-file failed")
-             throw)))))
+    (with-open [^BufferedWriter w
+                (io/writer file)]
+      (loop []
+        (when-some [v (async/<!! chan)]
+          (.write w ^String (stringifier v))
+          (.newLine w)
+          (recur))))))
