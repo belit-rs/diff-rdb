@@ -140,14 +140,3 @@
 
 
 ;; ==============================
-
-
-(s/def ::err     keyword?)
-(s/def ::ex      ::mapified-throwable)
-(s/def ::ptn     ::vals)
-(s/def ::ex-data (s/keys :req-un [::err
-                                  ::ex]
-                         :opt-un [::ptn]))
-
-
-;; ==============================
