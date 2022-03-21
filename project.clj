@@ -12,6 +12,6 @@
              {:dependencies [[org.clojure/test.check "1.1.1"]
                              [expound "0.9.0"]
                              [orchestra "2021.01.01-1"]
-                             [org.postgresql/postgresql "42.3.3"]
+                             [com.h2database/h2 "2.1.210"]
                              [criterium "0.4.6"]]
               :jvm-opts ["-Dclojure.core.async.go-checking=true"]}})

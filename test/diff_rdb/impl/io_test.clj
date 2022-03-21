@@ -21,7 +21,8 @@
    (java.io File IOException)
    (java.lang ArithmeticException)
    (clojure.lang ExceptionInfo)
-   (org.postgresql.util PSQLException)))
+   (org.h2.jdbc JdbcSQLDataException
+                JdbcSQLSyntaxErrorException)))
 
 
 (deftest <??-test
@@ -82,20 +83,20 @@
   (testing "Database"
     (let [r (jdbc/plan
              (db-spec)
-             ["SELECT column1
+             ["SELECT c1
                  FROM (VALUES (1, 1, 1),
                               (2, 2, 2),
                               (3, 3, 3)) AS _"])
           c (impl/reducible->chan
              (map #(into {} %)) r)]
-      (is (= (async/<!! c) {:column1 1}))
-      (is (= (async/<!! c) {:column1 2}))
-      (is (= (async/<!! c) {:column1 3}))
+      (is (= (async/<!! c) {:VALUES/C1 1}))
+      (is (= (async/<!! c) {:VALUES/C1 2}))
+      (is (= (async/<!! c) {:VALUES/C1 3}))
       (is (drained? c))
       (is (= (into [] (map #(into {} %)) r)
-             [{:column1 1}
-              {:column1 2}
-              {:column1 3}]))))
+             [{:VALUES/C1 1}
+              {:VALUES/C1 2}
+              {:VALUES/C1 3}]))))
   (testing "Exception"
     (with-file [f (create-file)]
       (is (thrown-uncaught?
@@ -193,25 +194,25 @@
 
 
 (deftest async-select-test
-  (let [sql-params ["SELECT column1
+  (let [sql-params ["SELECT c1
                        FROM (VALUES (1, 1, 1),
                                     (2, 2, 2),
                                     (3, 3, 3)) AS _
-                      WHERE column3 IN (?, ?)"]]
+                      WHERE c3 IN (?, ?)"]]
     (with-open [con (jdbc/get-connection (db-spec))
                 pst (jdbc/prepare con sql-params)]
       (is (= (async/<!! (impl/async-select pst [1 3] {}))
-             [{:column1 1} {:column1 3}]))
+             [{:VALUES/C1 1} {:VALUES/C1 3}]))
       (is (= (async/<!! (impl/async-select pst [2 1] {}))
-             [{:column1 1} {:column1 2}]))
+             [{:VALUES/C1 1} {:VALUES/C1 2}]))
       (is (thrown?
-           PSQLException
+           JdbcSQLDataException
            (impl/<?? (impl/async-select pst [1 2 3] {}))))))
   (let [sql-params ["SELECT * FROM (VALUES (1, 2)) AS _"]]
     (with-open [con (jdbc/get-connection (db-spec))
                 pst (jdbc/prepare con sql-params)]
       (is (= (async/<!! (impl/async-select pst [] {}))
-             [{:column1 1 :column2 2}])))))
+             [{:VALUES/C1 1 :VALUES/C2 2}])))))
 
 
 (deftest parallel-select-fn-test
@@ -225,7 +226,7 @@
                      {:conn  (db-spec)
                       :query "SELECT * FROM (VALUES (2)) AS _"}
                      ch-ptn ch-out)))]
-      (is (= (async/<!! ch-out) [[{:column1 1}] [{:column1 2}]]))
+      (is (= (async/<!! ch-out) [[{:VALUES/C1 1}] [{:VALUES/C1 2}]]))
       (is (nil? @select))
       (async/close! ch-out)))
   (testing "With partitions"
@@ -234,21 +235,21 @@
           select (future
                    ((impl/parallel-select-fn
                      {:conn  (db-spec)
-                      :query "SELECT column3
+                      :query "SELECT c3
                                 FROM (VALUES (1, 2, 3),
                                              (2, 3, 4),
                                              (3, 4, 5)) AS _
-                               WHERE column1 = ?"}
+                               WHERE c1 = ?"}
                      {:conn  (db-spec)
-                      :query "SELECT column3
+                      :query "SELECT c3
                                 FROM (VALUES (1, 2, 3),
                                              (2, 3, 4),
                                              (3, 4, 5)) AS _
-                               WHERE column1 = ?"}
+                               WHERE c1 = ?"}
                      ch-ptn ch-out)))]
-      (is (= (async/<!! ch-out) [[{:column3 3}] [{:column3 3}]]))
-      (is (= (async/<!! ch-out) [[{:column3 4}] [{:column3 4}]]))
-      (is (= (async/<!! ch-out) [[{:column3 5}] [{:column3 5}]]))
+      (is (= (async/<!! ch-out) [[{:VALUES/C3 3}] [{:VALUES/C3 3}]]))
+      (is (= (async/<!! ch-out) [[{:VALUES/C3 4}] [{:VALUES/C3 4}]]))
+      (is (= (async/<!! ch-out) [[{:VALUES/C3 5}] [{:VALUES/C3 5}]]))
       (is (nil? @select))
       (async/close! ch-out)))
   (testing "Change options"
@@ -257,43 +258,63 @@
           select (future
                    ((impl/parallel-select-fn
                      {:conn  (db-spec)
-                      :query "SELECT column3
+                      :query "SELECT c3
                                 FROM (VALUES (1, 2, 3),
                                              (2, 3, 4),
                                              (3, 4, 5)) AS _
-                               WHERE column1 = ?"
-                      :opts  {:builder-fn rs/as-arrays}}
+                               WHERE c1 = ?"
+                      :opts  {:builder-fn rs/as-unqualified-lower-arrays}}
                      {:conn  (db-spec)
-                      :query "SELECT column3
+                      :query "SELECT c3
                                 FROM (VALUES (1, 2, 3),
                                              (2, 3, 4),
                                              (3, 4, 5)) AS _
-                               WHERE column1 = ?"}
+                               WHERE c1 = ?"}
                      ch-ptn ch-out)))]
-      (is (= (async/<!! ch-out) [[[:column3] [3]] [{:column3 3}]]))
-      (is (= (async/<!! ch-out) [[[:column3] [4]] [{:column3 4}]]))
-      (is (= (async/<!! ch-out) [[[:column3] [5]] [{:column3 5}]]))
+      (is (= (async/<!! ch-out) [[[:c3] [3]] [{:VALUES/C3 3}]]))
+      (is (= (async/<!! ch-out) [[[:c3] [4]] [{:VALUES/C3 4}]]))
+      (is (= (async/<!! ch-out) [[[:c3] [5]] [{:VALUES/C3 5}]]))
       (is (nil? @select))
       (async/close! ch-out)))
-  (testing "Error handling"
+  (testing "Unrecoverable error handling"
+    (let [ch-ptn (async/to-chan! [[1]])
+          ch-out (async/chan)]
+      (is (thrown?
+           JdbcSQLSyntaxErrorException
+           ((impl/parallel-select-fn
+             {:conn  (db-spec)
+              :query "SELECT c3
+                        FROM (VALUES (1, 2, 3),
+                                     (2, 3, 4),
+                                     (3, 4, 5)) AS _
+                       WHERE c1 = ?"}
+             {:conn  (db-spec)
+              :query "SELECT_ERR c3
+                        FROM (VALUES (1, 2, 3),
+                                     (2, 3, 4),
+                                     (3, 4, 5)) AS _
+                       WHERE c1 = ?"}
+             ch-ptn ch-out))))
+      (async/close! ch-out)))
+  (testing "Recoverable error handling"
     (let [ch-ptn (async/to-chan! [[1]])
           ch-out (async/chan)]
       (try ((impl/parallel-select-fn
              {:conn  (db-spec)
-              :query "SELECT column3
+              :query "SELECT c3
                         FROM (VALUES (1, 2, 3),
                                      (2, 3, 4),
                                      (3, 4, 5)) AS _
-                       WHERE column1 = ?"}
+                       WHERE c1 = ?"}
              {:conn  (db-spec)
-              :query "SELECT_ERR column3
+              :query "SELECT c3
                         FROM (VALUES (1, 2, 3),
                                      (2, 3, 4),
                                      (3, 4, 5)) AS _
-                       WHERE column1 = ?"}
+                       WHERE c1 / 0 = ?"}
              ch-ptn ch-out))
            (catch ExceptionInfo ex
-             (is (instance? PSQLException (ex-cause ex)))
+             (is (instance? JdbcSQLDataException (ex-cause ex)))
              (is (= (ex-data ex) {:ptn [1]}))))
       (async/close! ch-out)))
   (testing "Close ch-out"
@@ -302,19 +323,19 @@
           select (future
                    ((impl/parallel-select-fn
                      {:conn  (db-spec)
-                      :query "SELECT column3
+                      :query "SELECT c3
                                 FROM (VALUES (1, 2, 3),
                                              (2, 3, 4),
                                              (3, 4, 5)) AS _
-                               WHERE column1 = ?"}
+                               WHERE c1 = ?"}
                      {:conn  (db-spec)
-                      :query "SELECT column3
+                      :query "SELECT c3
                                 FROM (VALUES (1, 2, 3),
                                              (2, 3, 4),
                                              (3, 4, 5)) AS _
-                               WHERE column1 = ?"}
+                               WHERE c1 = ?"}
                      ch-ptn ch-out)))]
-      (is (= (async/<!! ch-out) [[{:column3 3}] [{:column3 3}]]))
+      (is (= (async/<!! ch-out) [[{:VALUES/C3 3}] [{:VALUES/C3 3}]]))
       (async/close! ch-out)
       (async/poll! ch-out)
       (is (drained? ch-out))

@@ -5,13 +5,15 @@
   (:require
    [clojure.test :refer [deftest testing is]]
    [clojure.core.async :as async]
+   [next.jdbc.result-set :as rs]
    [diff-rdb.io :as io]
    [diff-rdb.impl.io :as impl]
    [diff-rdb.dev :refer [thrown-uncaught?
                          drained?
                          db-spec]])
   (:import
-   (org.postgresql.util PSQLException)))
+   (org.h2.jdbc JdbcSQLDataException
+                JdbcSQLSyntaxErrorException)))
 
 
 (deftest ptn-test
@@ -32,7 +34,7 @@
                   :ptn/plan {:conn  (db-spec)
                              :query "SELECT * FROM_ERR"}}]
       (is (thrown-uncaught?
-           PSQLException
+           JdbcSQLSyntaxErrorException
            (io/ptn config))))))
 
 
@@ -45,12 +47,14 @@
                               :query "SELECT * FROM
                                        (VALUES (1, 3, 5, 6),
                                                (2, 7, 9, 8))
-                                       AS _ (c1, c2, c3, c4)"}
+                                       AS _ (c1, c2, c3, c4)"
+                              :opts  {:builder-fn rs/as-unqualified-lower-maps}}
                    :tgt/plan {:conn  (db-spec)
                               :query "SELECT * FROM
                                        (VALUES (2, 2, 9, 4),
                                                (3, 6, 7, 8))
-                                       AS _ (c1, c2, c3, c4)"}}
+                                       AS _ (c1, c2, c3, c4)"
+                              :opts  {:builder-fn rs/as-unqualified-lower-maps}}}
           ch-ptn  (async/to-chan! [[]])
           ch-diff (io/diff config ch-ptn)]
       (is (= (async/<!! (async/into #{} ch-diff))
@@ -68,13 +72,15 @@
                                        (VALUES (1, 3, 5, 6),
                                                (2, 7, 9, 8))
                                        AS _ (c1, c2, c3, c4)
-                                      WHERE c1 IN (?, ?, ?)"}
+                                      WHERE c1 IN (?, ?, ?)"
+                              :opts  {:builder-fn rs/as-unqualified-lower-maps}}
                    :tgt/plan {:conn  (db-spec)
                               :query "SELECT * FROM
                                        (VALUES (2, 2, 9, 4),
                                                (3, 6, 7, 8))
                                        AS _ (c1, c2, c3, c4)
-                                      WHERE c1 IN (?, ?, ?)"}}
+                                      WHERE c1 IN (?, ?, ?)"
+                              :opts  {:builder-fn rs/as-unqualified-lower-maps}}}
           ch-ptn  (async/to-chan! [[1 2 3] [4 4 4]])
           ch-diff (io/diff config ch-ptn)]
       (is (= (async/<!! (async/into #{} ch-diff))
@@ -88,18 +94,18 @@
       (let [config {:match-by [:c1]
                     :ponders  {:c2 3 :c3 2}
                     :workers  1
-                    :src/plan {:conn  (assoc (db-spec) :dbtype "oracle")
+                    :src/plan {:conn  (db-spec)
                                :query "SELECT * FROM
                                         (VALUES (1)) AS _ (c1)
                                        WHERE c1 IN (?)"}
                     :tgt/plan {:conn  (db-spec)
-                               :query "SELECT * FROM
+                               :query "SELECT_ERR * FROM
                                         (VALUES (2)) AS _ (c1)
                                        WHERE c1 IN (?)"}}
             ch-err  (impl/uncaught-ex-chan)
             ch-ptn  (async/to-chan! [[1]])
             ch-diff (io/diff config ch-ptn)]
-        (is (instance? java.sql.SQLException (async/<!! ch-err)))
+        (is (instance? JdbcSQLSyntaxErrorException (async/<!! ch-err)))
         (async/close! ch-err)
         (is (drained? ch-err))
         (is (= (async/<!! (async/into [] ch-ptn)) [[1]]))
@@ -115,14 +121,14 @@
                                          (VALUES (1)) AS _ (c1)
                                         WHERE c1 IN (?)"}
                      :tgt/plan {:conn (db-spec)
-                                :query "SELECT * FROM_ERR
+                                :query "SELECT * FROM
                                          (VALUES (2)) AS _ (c1)
-                                        WHERE c1 IN (?)"}}
+                                        WHERE c1 / 0 IN (?)"}}
             ch-err  (impl/uncaught-ex-chan)
             ch-ptn  (async/to-chan! [[1]])
             ch-diff (io/diff config ch-ptn)]
         (let [ex (async/<!! ch-err)]
-          (is (instance? PSQLException (ex-cause ex)))
+          (is (instance? JdbcSQLDataException (ex-cause ex)))
           (is (= (ex-data ex) {:ptn [1]})))
         (async/close! ch-err)
         (is (drained? ch-err))

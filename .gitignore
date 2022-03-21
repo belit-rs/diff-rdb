@@ -3,3 +3,5 @@
 /pom.xml
 /pom.xml.asc
 /.clj-kondo/.cache
+/test.mv.db
+/test.trace.db

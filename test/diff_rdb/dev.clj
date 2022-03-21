@@ -68,12 +68,9 @@
 
 (defn db-spec
   []
-  {:dbtype   "postgresql"
-   :host     "localhost"
-   :port     5432
-   :dbname   "postgres"
-   :user     "test"
-   :password "test"})
+  {:dbtype "h2"
+   :dbname "test"
+   :mode   "PostgreSQL"})
 
 
 (defn drained?
